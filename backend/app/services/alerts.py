@@ -1977,6 +1977,7 @@ def get_grades(district: str | None = None, school: str | None = None) -> List[G
     Returns:
         List of GradeResponse objects with grade details
     """
+    print(f"Getting grades for district: {district}, school: {school}")
     if not data_store.is_ready:
         raise HTTPException(status_code=503, detail='Data is still being loaded. Please try again shortly.')
         
@@ -2066,7 +2067,7 @@ def get_grades(district: str | None = None, school: str | None = None) -> List[G
                 value=grade,
                 label='PK' if grade == '-1' else ('K' if grade == '0' else grade),
                 district=district if district else None,
-                school=school.split('-', 1)[1].strip() if school and '-' in school else None
+                school=school if school else None
             )
             for grade in sorted(unique_grades, key=grade_sort_key)
         ]
@@ -2082,5 +2083,3 @@ if __name__ == '__main__':
     logger = logging.getLogger('uvicorn')
     logger.setLevel(logging.DEBUG)
     uvicorn.run('main:app', host='127.0.0.1', port=8001, reload=True, log_level='debug')
-
-

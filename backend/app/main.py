@@ -84,6 +84,7 @@ def schools(district_code: str | None = None):
 @app.get("/api/alerts/filters/grades")
 def grades(district_code: str | None = None, school_code: str | None = None):
     ready()
+    print(f"Fetching grades for district: {district_code}, school: {school_code}")
     return alerts.get_grades(district_code, school_code)
 
 

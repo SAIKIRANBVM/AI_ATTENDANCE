@@ -26,7 +26,7 @@ const gradeStringToNumber = (gradeStr: string): number => {
   return m ? parseInt(m[1]) : -3;
 };
 
-const Index: React.FC = () => {
+const Prediction: React.FC = () => {
   const [districts, setDistricts] = useState<{ id: number; name: string }[]>(
     []
   );
@@ -305,4 +305,4 @@ const Index: React.FC = () => {
   );
 };
 
-export default Index;
+export default Prediction;
