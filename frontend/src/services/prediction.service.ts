@@ -29,7 +29,7 @@ export interface InitialDataResponse {
 
 class AttendanceService {
   async getInitialData(): Promise<InitialDataResponse> {
-    const res = await axiosInstance.get("/students");
+    const res = await axiosInstance.get("predictions/students");
     return {
       districts: res.data.districts ?? [],
       schools: res.data.schools ?? [],
@@ -38,27 +38,27 @@ class AttendanceService {
   }
 
   async getAllDistrictsData(): Promise<AttendanceResponse> {
-    const res = await axiosInstance.get("/all-districts");
+    const res = await axiosInstance.get("predictions/all-districts");
     return res.data;
   }
 
   async getDistrictData(body: FilterRequest): Promise<AttendanceResponse> {
-    const res = await axiosInstance.post("/district", body);
+    const res = await axiosInstance.post("predictions/district", body);
     return res.data;
   }
 
   async getSchoolData(body: FilterRequest): Promise<AttendanceResponse> {
-    const res = await axiosInstance.post("/school", body);
+    const res = await axiosInstance.post("predictions/school", body);
     return res.data;
   }
 
   async getGradeData(body: FilterRequest): Promise<AttendanceResponse> {
-    const res = await axiosInstance.post("/grade-details", body);
+    const res = await axiosInstance.post("predictions/grade-details", body);
     return res.data;
   }
 
   async getStudentData(body: FilterRequest): Promise<AttendanceResponse> {
-    const res = await axiosInstance.post("/student-details", body);
+    const res = await axiosInstance.post("predictions/student-details", body);
     return res.data;
   }
 }

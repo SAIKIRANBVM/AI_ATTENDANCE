@@ -97,7 +97,9 @@ class AlertsService {
    */
   async getFilterOptions(): Promise<FilterOptionsResponse> {
     try {
-      const response = await axiosInstance.get<FilterOptionsResponse>("/filter-options");
+      const response = await axiosInstance.get<FilterOptionsResponse>(
+        "alerts/filter-options"
+      );
       return response.data;
     } catch (error) {
       console.error("Error fetching filter options:", error);
@@ -108,11 +110,16 @@ class AlertsService {
   /**
    * Fetches schools for a specific district
    */
-  async getSchoolsByDistrict(params: { district: string }): Promise<SchoolOption[]> {
+  async getSchoolsByDistrict(params: {
+    district: string;
+  }): Promise<SchoolOption[]> {
     try {
-      const response = await axiosInstance.get<SchoolOption[]>("/filters/schools", {
-        params: { district_code: params.district },
-      });
+      const response = await axiosInstance.get<SchoolOption[]>(
+        "alerts/filters/schools",
+        {
+          params: { district_code: params.district },
+        }
+      );
       return response.data;
     } catch (error) {
       console.error("Error fetching schools for district:", error);
@@ -125,7 +132,9 @@ class AlertsService {
    */
   async getAllSchools(): Promise<SchoolOption[]> {
     try {
-      const response = await axiosInstance.get<SchoolOption[]>("/filters/schools");
+      const response = await axiosInstance.get<SchoolOption[]>(
+        "alerts/filters/schools"
+      );
       return response.data;
     } catch (error) {
       console.error("Error fetching all schools:", error);
@@ -136,21 +145,27 @@ class AlertsService {
   /**
    * Fetches grades for a specific school
    */
-/**
- * Fetches grades for a specific school
- */
-async getGradesBySchool(params: { school: string; district: string }): Promise<GradeOption[]> {
+  /**
+   * Fetches grades for a specific school
+   */
+  async getGradesBySchool(params: {
+    school: string;
+    district: string;
+  }): Promise<GradeOption[]> {
     try {
       // Log the parameters being sent
       console.log("Sending grades request with params:", params);
-      
-      const response = await axiosInstance.get<GradeOption[]>("/filters/grades", {
-        params: {
-          school_code: params.school, 
-          district_code: params.district,
-        },
-      });
-      
+
+      const response = await axiosInstance.get<GradeOption[]>(
+        "alerts/filters/grades",
+        {
+          params: {
+            school_code: params.school,
+            district_code: params.district,
+          },
+        }
+      );
+
       console.log("Received grades response:", response.data);
       return response.data;
     } catch (error) {
@@ -158,7 +173,6 @@ async getGradesBySchool(params: { school: string; district: string }): Promise<G
       throw this.handleError(error as ApiError);
     }
   }
-  
 
   /**
    * Fetches AI-driven analysis and insights based on search criteria
@@ -166,7 +180,7 @@ async getGradesBySchool(params: { school: string; district: string }): Promise<G
   async getPredictionInsights(criteria: SearchCriteria): Promise<AnalysisData> {
     try {
       const response = await axiosInstance.post<AnalysisData>(
-        "/prediction-insights",
+        "alerts/prediction-insights",
         criteria,
         {
           headers: {
@@ -185,7 +199,10 @@ async getGradesBySchool(params: { school: string; district: string }): Promise<G
   /**
    * Downloads a report of specified type
    */
-  async downloadReport(reportType: string, criteria: DownloadCriteria): Promise<Blob> {
+  async downloadReport(
+    reportType: string,
+    criteria: DownloadCriteria
+  ): Promise<Blob> {
     try {
       const downloadCriteria: DownloadCriteria = {
         ...criteria,
@@ -193,7 +210,7 @@ async getGradesBySchool(params: { school: string; district: string }): Promise<G
       };
 
       const response = await axiosInstance.post(
-        `download/report/${reportType}`,
+        `alerts/download/report/${reportType}`,
         downloadCriteria,
         {
           responseType: "blob",
@@ -284,7 +301,10 @@ async getGradesBySchool(params: { school: string; district: string }): Promise<G
   /**
    * Generates filename for report downloads
    */
-  generateReportFilename(reportType: string, extension: string = "xlsx"): string {
+  generateReportFilename(
+    reportType: string,
+    extension: string = "xlsx"
+  ): string {
     const timestamp = new Date().toISOString().split("T")[0];
     return `attendance_${reportType}_${timestamp}.${extension}`;
   }

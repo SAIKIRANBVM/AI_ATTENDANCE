@@ -1,24 +1,22 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import ORJSONResponse, StreamingResponse
+from fastapi.responses import ORJSONResponse
 
-from backend.app.utils.loader import load_data
-from backend.app.utils.preprocessing import add_basic_rates
+from backend.app.utils.loader import load_and_process
 from backend.app.data_store import data_store
-from backend.app.ml import get_models
 from backend.app.services.predictions import load_and_process_data
-from backend.app.services.insight_service import InsightService
-from backend.app.services.filter_service import FilterService
-from backend.app.services.report_service import ReportService
 from backend.app.services.prediction_service import PredictionService
-from backend.classes.AnalysisSearchCriteria import AnalysisSearchCriteria
+from backend.classes.FilterCriteria import FilterCriteria
+from backend.classes.AnalysisResponse import AnalysisResponse
+from backend.classes.FilterOptions import FilterOptions
 from backend.classes.DataRequest import DataRequest
-from backend.classes.DownloadReportCriteria import DownloadReportCriteria
 from backend.app.services import alerts
+
 
 app = FastAPI(
     default_response_class=ORJSONResponse,
-)
+    )
+
 origins = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
@@ -35,20 +33,16 @@ app.add_middleware(
     allow_origins=origins,                       
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH",
-                   "DELETE", "OPTIONS"],         
+                "DELETE", "OPTIONS"],         
     allow_headers=["Content-Type", "Authorization"]
 )
 
 
-@app.on_event("startup")
+@app.on_event('startup')
 def bootstrap():
-    alerts.load_and_process_data()
+    load_and_process()
     load_and_process_data()
-    df_local = add_basic_rates(load_data())
-    if df_local.empty:
-        raise RuntimeError("no data")
-    data_store.df = df_local # type:ignore
-    data_store.risk_model, data_store.anomaly_model, data_store.cluster_model = get_models(df_local) # type: ignore
+    
 
 
 def ready():
@@ -57,22 +51,17 @@ def ready():
 
 
 
-@app.post("/api/alerts/prediction-insights", response_model=InsightService.prediction_insights.__annotations__["return"])
-def prediction_insights(criteria: AnalysisSearchCriteria):
+@app.post("/api/alerts/prediction-insights", response_model=AnalysisResponse)
+def prediction_insights(criteria: FilterCriteria):
     ready()
     return alerts.get_analysis(criteria)
 
 
-@app.get("/api/alerts/filter-options", response_model=FilterService.filter_options.__annotations__["return"])
+@app.get("/api/alerts/filter-options", response_model=FilterOptions)
 def filter_options():
     ready()
     return alerts.get_filter_options()
 
-
-@app.get("/api/alerts/filters/districts")
-def districts():
-    ready()
-    return alerts.get_districts()
 
 
 @app.get("/api/alerts/filters/schools")
@@ -89,7 +78,7 @@ def grades(district_code: str | None = None, school_code: str | None = None):
 
 
 @app.post("/api/alerts/download/report/{report_type}")
-def download_report(report_type: str, criteria: DownloadReportCriteria):
+def download_report(report_type: str, criteria: FilterCriteria):
     ready()
     return alerts.download_report(criteria, report_type)
 

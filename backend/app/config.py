@@ -114,6 +114,12 @@ def get_historical_years() -> List[int]:
 def refresh_year_config():
     year_config.refresh_config()
 
+def get_alerts_data_path():
+    return year_config.alerts_data_path
+
+def get_predictions_data_path():
+    return year_config.predictions_data_path
+
 __all__ = [
     'YearConfig',
     'year_config',
@@ -121,5 +127,7 @@ __all__ = [
     'get_predicted_year', 
     'get_year_range',
     'get_historical_years',
-    'refresh_year_config'
+    'refresh_year_config',
+    'get_alerts_data_path',
+    'get_predictions_data_path'
 ]
