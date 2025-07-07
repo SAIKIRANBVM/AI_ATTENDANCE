@@ -8,6 +8,7 @@ interface AuthContextType {
 const AUTH_TOKEN_KEY = 'auth_token';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+console.log(`The authContext value in authContext.tsx file: ${AuthContext}`)
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Initialize token from localStorage
@@ -36,10 +37,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Event data:', event.data);
 
       // Accept messages from localhost:4200 regardless of path
-      if (!event.origin.startsWith('http://localhost:4200')) {
-        console.log('Origin not allowed:', event.origin);
-        return;
-      }
+      // if (!event.origin.startsWith('https://best.bvm.ngrok.app')) {
+      //   console.log('Origin not allowed:', event.origin);
+      //   return;
+      // }
 
       // Check if the message is an auth token
       if (event.data?.type === 'AUTH_TOKEN' && event.data?.token) {

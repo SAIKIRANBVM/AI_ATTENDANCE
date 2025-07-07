@@ -98,7 +98,7 @@ class AlertsService {
   async getFilterOptions(): Promise<FilterOptionsResponse> {
     try {
       const response = await axiosInstance.get<FilterOptionsResponse>(
-        "alerts/filter-options"
+        "filter-options"
       );
       return response.data;
     } catch (error) {
@@ -115,7 +115,7 @@ class AlertsService {
   }): Promise<SchoolOption[]> {
     try {
       const response = await axiosInstance.get<SchoolOption[]>(
-        "alerts/schools",
+        "schools",
         {
           params: { district_code: params.district },
         }
@@ -133,7 +133,7 @@ class AlertsService {
   async getAllSchools(): Promise<SchoolOption[]> {
     try {
       const response = await axiosInstance.get<SchoolOption[]>(
-        "alerts/schools"
+        "schools"
       );
       return response.data;
     } catch (error) {
@@ -157,7 +157,7 @@ class AlertsService {
       console.log("Sending grades request with params:", params);
 
       const response = await axiosInstance.get<GradeOption[]>(
-        "alerts/grades",
+        "grades",
         {
           params: {
             school_code: params.school,
@@ -180,7 +180,7 @@ class AlertsService {
   async getPredictionInsights(criteria: SearchCriteria): Promise<AnalysisData> {
     try {
       const response = await axiosInstance.post<AnalysisData>(
-        "alerts/prediction-insights",
+        "prediction-insights",
         criteria,
         {
           headers: {
@@ -210,7 +210,7 @@ class AlertsService {
       };
 
       const response = await axiosInstance.post(
-        `alerts/download/report/${reportType}`,
+        `download/report/${reportType}`,
         downloadCriteria,
         {
           responseType: "blob",

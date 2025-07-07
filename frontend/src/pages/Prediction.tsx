@@ -46,6 +46,7 @@ const Prediction: React.FC = () => {
   const [isDataLoading, setIsDataLoading] = useState(false);
 
   const { token } = useAuth();
+  console.log(`The token value in prediction.tsx file: ${token}`)
 
   useEffect(() => {
     setAuthToken(token);

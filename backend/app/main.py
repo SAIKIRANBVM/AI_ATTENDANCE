@@ -25,7 +25,8 @@ origins = [
     "http://localhost:8081",
     "http://127.0.0.1:8081",
     "http://localhost:8081/alerts",
-    "http://127.0.0.1:8081/alerts"
+    "http://127.0.0.1:8081/alerts", 
+    "https://best.bvm.ngrok.app/aip_aip/aip/FastAPIService/predictions/students"
 ]
 
 app.add_middleware(

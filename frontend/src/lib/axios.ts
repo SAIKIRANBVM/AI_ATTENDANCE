@@ -4,7 +4,8 @@ const AUTH_TOKEN_KEY = "auth_token";
 const axiosInstance = axios.create({
   // baseURL: "http://127.0.0.1:9000/api/FastAPIService",
   // baseURL: "http://localhost:9000/api/predictions",
-  baseURL: "http://localhost:9000/api/",
+  // baseURL: "http://localhost:9000/api/",
+  baseURL: "https://best.bvm.ngrok.app/aip_api/api/FastAPIService/",
   headers: {
     "Content-Type": "application/json",
   },
@@ -13,6 +14,7 @@ const axiosInstance = axios.create({
 let authToken: string | null = localStorage.getItem(AUTH_TOKEN_KEY);
 
 export const setAuthToken = (token: string | null) => {
+  console.log(`The token value in axios setToken function: ${token}`)
   authToken = token;
   if (token) {
     localStorage.setItem(AUTH_TOKEN_KEY, token);
