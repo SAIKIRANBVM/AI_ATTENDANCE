@@ -64,13 +64,13 @@ def filter_options():
 
 
 
-@app.get("/api/alerts/filters/schools")
+@app.get("/api/alerts/schools")
 def schools(district_code: str | None = None):
     ready()
     return alerts.get_schools(district_code)
 
 
-@app.get("/api/alerts/filters/grades")
+@app.get("/api/alerts/grades")
 def grades(district_code: str | None = None, school_code: str | None = None):
     ready()
     print(f"Fetching grades for district: {district_code}, school: {school_code}")

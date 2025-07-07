@@ -8,7 +8,7 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.impute import SimpleImputer
 
 from backend.app.utils.logger import logger
-from backend.app.utils.model_file_utils import file_utils
+from backend.app.utils.model_file_utils import FileUtils
 from backend.app.data_store import data_store
 
 class AnomalyDetector:
@@ -83,6 +83,7 @@ class AnomalyDetector:
                 ])
 
                 model.fit(X_df)
+                file_utils = FileUtils()
                 file_utils.save_model(model, 'anomaly_detector')
                 logger.info(
                     f"Trained new anomaly detector with features: {features}, "

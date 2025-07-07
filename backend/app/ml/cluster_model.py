@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import os
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -8,7 +9,7 @@ from sklearn.cluster import KMeans
 
 
 from backend.app.utils.logger import logger
-from backend.app.utils.model_file_utils import file_utils
+from backend.app.utils.model_file_utils import FileUtils
 from backend.app.data_store import data_store
 
 
@@ -110,7 +111,13 @@ class ClusterModel:
                     logger.warning("Not enough points for elbow method. Using default of 3 clusters.")
                     n_clusters = 3
 
-            model = file_utils.load_model('cluster_model')
+            file_utils = FileUtils()
+            model_path = file_utils.get_model_filename('cluster_model')
+
+            if os.path.exists(model_path):
+                model = file_utils.load_model('cluster_model')
+            else:
+                model = None
 
             if model is None or True:
                 logger.info(f"Training new clustering model with {n_clusters} clusters...")
@@ -123,8 +130,7 @@ class ClusterModel:
                 model.fit(X)
                 file_utils.save_model(model, 'cluster_model')
                 logger.info("Successfully trained and saved new clustering model")
-            else:
-                logger.info("Using cached clustering model")
+
 
             data_store.ml_models['cluster_model'] = model
 

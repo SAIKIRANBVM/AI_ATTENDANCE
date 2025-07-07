@@ -1,3 +1,5 @@
+import os
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -5,11 +7,12 @@ from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 
 from backend.app.utils.logger import logger
-from backend.app.utils.model_file_utils import file_utils
+from backend.app.utils.model_file_utils import FileUtils
 
 
 class RiskModel:
     def train_ml_model(self, df):
+        file_utils = FileUtils()
         try:
             logger.info('Training machine learning models on attendance data...')
             models = {}
@@ -78,7 +81,11 @@ class RiskModel:
             if len(X) < 50:
                 raise ValueError(f'Not enough samples for training. Got {len(X)} samples, need at least 50')
 
-            model = file_utils.load_model('risk_predictor')
+            model_path = file_utils.get_model_filename('risk_predictor')
+            if os.path.exists(model_path):
+                model = file_utils.load_model('risk_predictor')
+            else:
+                model = None
 
             if model is None:
                 logger.info("Training new risk predictor model...")

@@ -40,5 +40,3 @@ class FileUtils:
                 
         return model
     
-
-file_utils = FileUtils()

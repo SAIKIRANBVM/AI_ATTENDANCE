@@ -1,7 +1,7 @@
 from backend.app.config import get_alerts_data_path, get_current_year
 from backend.app.utils.logger import logger
 from backend.app.data_store import data_store
-from backend.app.utils.model_file_utils import file_utils
+from backend.app.utils.model_file_utils import FileUtils
 from backend.app.utils.alerts_utils import al_utils
 from backend.app.services.ai_predictions import apply_ai_predictions_to_dataset
 from backend.app.ml.risk_model import RiskModel
@@ -31,6 +31,7 @@ def load_data() -> pd.DataFrame:
 
 
 def load_and_process():
+    file_utils = FileUtils()
     try:
         data_store.loading = True
         data_store.is_ready = False
