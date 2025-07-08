@@ -45,7 +45,7 @@ const Prediction: React.FC = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(false);
 
-  const { token } = useAuth();
+  const { token, ready } = useAuth();
   console.log(`The token value in prediction.tsx file: ${token}`)
 
   useEffect(() => {
@@ -64,8 +64,9 @@ const Prediction: React.FC = () => {
         setIsInitialLoading(false);
       }
     };
+    if (!ready) return; 
     fetchInitialData();
-  }, []);
+  }, [ready]);
 
   const fetchData = useCallback(async () => {
     if (isInitialLoading) return;

@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 interface AuthContextType {
   token: string | null;
   setToken: (token: string | null) => void;
+  ready: boolean; 
 }
 
 const AUTH_TOKEN_KEY = 'auth_token';
@@ -15,6 +16,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setTokenState] = useState<string | null>(() => {
     return localStorage.getItem(AUTH_TOKEN_KEY);
   });
+  const [ready, setReady] = useState(false);
 
   // Wrapper function to update both state and localStorage
   const setToken = (newToken: string | null) => {
@@ -27,6 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem(AUTH_TOKEN_KEY);
       console.log('Token removed from localStorage');
     }
+    setReady(true);
   };
 
   useEffect(() => {
@@ -36,11 +39,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Event origin:', event.origin);
       console.log('Event data:', event.data);
 
-      // Accept messages from localhost:4200 regardless of path
-      // if (!event.origin.startsWith('https://best.bvm.ngrok.app')) {
-      //   console.log('Origin not allowed:', event.origin);
-      //   return;
-      // }
 
       // Check if the message is an auth token
       if (event.data?.type === 'AUTH_TOKEN' && event.data?.token) {
@@ -84,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, setToken }}>
+    <AuthContext.Provider value={{ token, setToken, ready }}>
       {children}
     </AuthContext.Provider>
   );
