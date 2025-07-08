@@ -13,7 +13,7 @@ from backend.classes.AnalysisResponse import AnalysisResponse
 from backend.classes.FilterCriteria import FilterCriteria
 from backend.classes.FilterOptions import FilterOptions
 from backend.classes.GradeResponse import GradeResponse
-from backend.classes.SchoolOption import SchoolOption
+from backend.classes.SchoolResponse import SchoolResponse
 from backend.app.config import get_current_year
 from backend.app.data_store import data_store
 from backend.app.utils.logger import logger
@@ -112,7 +112,7 @@ def get_analysis(search_criteria: FilterCriteria):
         insights = GenerationService.generate_insights(df)
         recommendations = GenerationService.generate_recommendations(df)
         logger.info(f'AI analysis completed in {time.time() - start_time:.4f} seconds')
-        return AnalysisResponse(summary_statistics=summary, key_insights=insights, recommendations=recommendations)
+        return AnalysisResponse(summaryStatistics=summary, keyInsights=insights, recommendations=recommendations)
     except Exception as e:
         logger.error(f'Error in get_analysis: {str(e)}')
         raise HTTPException(status_code=500, detail=str(e))
@@ -162,7 +162,7 @@ def get_filter_options():
         flat_schools = []
         for district in districts:
             for school in district['schools']:
-                flat_schools.append({'value': school['value'], 'label': school['label'], 'district': school['district']})
+                flat_schools.append({'value': school['value'], 'label': school['label'], 'district_code': school['district']})
         
         flat_grades = []
         grade_count = 0
@@ -172,15 +172,15 @@ def get_filter_options():
             logger.debug(f"  District: {district['label']} ({district['value']})")
             for school in district['schools']:
                 school_grade_count = 0
-                logger.debug(f"    School: {school['label']} ({school['value']})")
-                logger.debug(f"    Raw grades data: {school.get('grades', [])}")
+                logger.debug(f"School: {school['label']} ({school['value']})")
+                logger.debug(f"Raw grades data: {school.get('grades', [])}")
                 
                 for grade in school.get('grades', []):
                     grade_value = str(grade.get('value', '')).strip().upper()
                     if not grade_value.startswith('G'):
                         grade_value = f"G{grade_value}"
                     
-                    grade_entry = {'value': grade_value, 'label': f"Grade {grade_value.replace('G', '')}", 'school': school['value'], 'district': district['value']}
+                    grade_entry = {'value': grade_value, 'label': f"Grade {grade_value.replace('G', '')}", 'school_code': school['value'], 'district_code': district['value']}
                     flat_grades.append(grade_entry)
                     school_grade_count += 1
                     grade_count += 1
@@ -294,7 +294,7 @@ def download_report(criteria: FilterCriteria, report_type: str):
         raise HTTPException(status_code=500, detail=f'An error occurred while generating the report. Please try again later.')
 
 
-def get_schools(district: Optional[str] = None) -> List[SchoolOption]:
+def get_schools(district: Optional[str] = None) -> List[SchoolResponse]:
     if not data_store.is_ready:
         raise HTTPException(status_code=503, detail='Data is still being loaded. Please try again shortly.')
     
@@ -302,7 +302,7 @@ def get_schools(district: Optional[str] = None) -> List[SchoolOption]:
     
     if not district:
         school_groups = df.groupby(['DISTRICT_CODE', 'DISTRICT_NAME', 'LOCATION_ID', 'SCHOOL_NAME']).size().reset_index() #type:ignore
-        return [SchoolOption(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), district=str(row['DISTRICT_CODE']).strip()) for _, row in school_groups.iterrows()]
+        return [SchoolResponse(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), district_code=str(row['DISTRICT_CODE']).strip()) for _, row in school_groups.iterrows()]
     
     district = str(district).strip()
     district_filter = (df['DISTRICT_CODE'].astype(str).str.strip() == district) #type:ignore
@@ -316,7 +316,7 @@ def get_schools(district: Optional[str] = None) -> List[SchoolOption]:
     filtered_df = df[df['DISTRICT_CODE'].astype(str).str.strip() == actual_district_code] #type:ignore
     school_groups = filtered_df.groupby(['LOCATION_ID', 'SCHOOL_NAME']).size().reset_index() #type:ignore
     
-    return [SchoolOption(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), district=actual_district_code) for _, row in school_groups.iterrows()]
+    return [SchoolResponse(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), district_code=actual_district_code) for _, row in school_groups.iterrows()]
 
 
 def get_grades(district: str | None = None, school: str | None = None) -> List[GradeResponse]:
@@ -389,7 +389,7 @@ def get_grades(district: str | None = None, school: str | None = None) -> List[G
             except (ValueError, TypeError):
                 return (float('inf'), grade_str)
         
-        return [GradeResponse(value=grade, label='PK' if grade == '-1' else ('K' if grade == '0' else grade), district=district if district else None, school=school if school else None) for grade in sorted(unique_grades, key=grade_sort_key)]
+        return [GradeResponse(value=grade, label='PK' if grade == '-1' else ('K' if grade == '0' else grade), district_code=district if district else None, school_code=school if school else None) for grade in sorted(unique_grades, key=grade_sort_key)]
         
     except Exception as e:
         logger.error(f'Error getting grades: {str(e)}', exc_info=True)

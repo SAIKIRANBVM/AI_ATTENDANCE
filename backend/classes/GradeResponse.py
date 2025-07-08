@@ -2,5 +2,5 @@ from backend.classes.ValueLabelPair import ValueLabelPair
 from typing import Optional
 
 class GradeResponse(ValueLabelPair):
-    school: Optional[str] = None
-    district: Optional[str] = None
+    school_code: Optional[str] = None
+    district_code: Optional[str] = None

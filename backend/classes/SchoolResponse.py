@@ -1,5 +1,5 @@
 from backend.classes.ValueLabelPair import ValueLabelPair
 
 
-class SchoolOption(ValueLabelPair):
-    district: str
+class SchoolResponse(ValueLabelPair):
+    district_code: str
