@@ -17,9 +17,6 @@ import axiosInstance, { setAuthToken } from "@/lib/axios";
 import alertsService from "@/services/alerts.service";
 
 
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
 
 interface DistrictOption {
   value: string;
@@ -89,9 +86,6 @@ interface DownloadCriteria extends SearchCriteria {
   report_type?: string;
 }
 
-// ============================================================================
-// STATE MANAGEMENT WITH USEREDUCER
-// ============================================================================
 
 interface FilterState {
   district: string;
@@ -223,21 +217,14 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
   }
 };
 
-// ============================================================================
-// UTILITY FUNCTIONS
-// ============================================================================
 
-/**
- * Processes district code by removing 'D' prefix if present
- */
+
 const processDistrictCode = (code: string | undefined): string | undefined => {
   if (!code) return undefined;
   return /^D\d+$/.test(code) ? code.substring(1) : code;
 };
 
-/**
- * Extracts school code from combined district-school ID
- */
+
 const extractSchoolCode = (schoolValue: string): string => {
   if (!schoolValue) return "";
   return schoolValue.includes("-")
@@ -245,9 +232,7 @@ const extractSchoolCode = (schoolValue: string): string => {
     : schoolValue;
 };
 
-/**
- * Creates search criteria object from current filter state
- */
+
 const createSearchCriteria = (filters: FilterState): SearchCriteria => ({
   district_code: filters.district
     ? processDistrictCode(filters.district)
@@ -257,9 +242,7 @@ const createSearchCriteria = (filters: FilterState): SearchCriteria => ({
   student_id: undefined,
 });
 
-/**
- * Extracts user-friendly error message from API error
- */
+
 const extractErrorMessage = (error: ApiError): string => {
   if (error.response) {
     if (error.response.data?.detail) {
@@ -277,18 +260,12 @@ const extractErrorMessage = (error: ApiError): string => {
   return `Request error: ${error.message}`;
 };
 
-/**
- * Formats insight/recommendation text with highlighted percentages
- * Updated to handle ranges like 80-90% and percentages around punctuation
- */
+
 const formatTextWithHighlights = (text: string): string => {
-  // Match percentage patterns including ranges, decimals, and percentages near punctuation
   return text.replace(/(\d+(?:\.\d+)?(?:-\d+(?:\.\d+)?)?%)/g, '<strong class="text-teal-700">$1</strong>');
 };
 
-/**
- * Safely extracts text from insight/recommendation items
- */
+
 const getTextFromItem = (
   item: string | InsightItem | RecommendationItem
 ): string => {
@@ -300,9 +277,7 @@ const getTextFromItem = (
   return "No content available";
 };
 
-/**
- * Creates unique key for select options
- */
+
 const createOptionKey = (
   prefix: string,
   value: string,
@@ -314,25 +289,13 @@ const createOptionKey = (
   }`;
 };
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
 
 const AlertsDashboard: React.FC = () => {
-  // ============================================================================
-  // STATE MANAGEMENT
-  // ============================================================================
 
   const [state, dispatch] = useReducer(appReducer, initialState);
-  const { token } = useAuth();
+  const { token, ready } = useAuth();
 
-  // ============================================================================
-  // DATA FETCHING FUNCTIONS
-  // ============================================================================
-
-  /**
-   * Fetches initial filter options and global analysis data
-   */
+  
   const fetchInitialData = useCallback(async (): Promise<void> => {
     dispatch({ type: "SET_LOADING", payload: { isLoading: true } });
     dispatch({ type: "CLEAR_ERRORS" });
@@ -342,7 +305,6 @@ const AlertsDashboard: React.FC = () => {
     }
 
     try {
-      // Fetch filter options
       try {
         console.log("Fetching filter options...");
         const filterOptionsRes = await alertsService.getFilterOptions();
@@ -364,7 +326,6 @@ const AlertsDashboard: React.FC = () => {
           },
         });
 
-        // Set filtered options if filters are already selected
         if (state.filters.district) {
           const filteredSchools = (schools || []).filter(
             (s: SchoolOption) => s.district === state.filters.district
@@ -394,7 +355,6 @@ const AlertsDashboard: React.FC = () => {
         });
       }
 
-      // Fetch initial global analysis
       try {
         const searchCriteria = {
           district_name: "",
@@ -431,9 +391,7 @@ const AlertsDashboard: React.FC = () => {
     }
   }, [state.loadTimer, state.filters.district, state.filters.school]);
 
-  /**
-   * Fetches schools for selected district (NO AUTO-RELOAD)
-   */
+  
   const fetchSchoolsForDistrict = useCallback(
     async (district: string): Promise<void> => {
       if (!district) {
@@ -448,7 +406,6 @@ const AlertsDashboard: React.FC = () => {
       }
   
       try {
-        // Use alertsService instead of axiosInstance
         const filteredSchools = await alertsService.getSchoolsByDistrict({ 
           district: district 
         });
@@ -466,11 +423,10 @@ const AlertsDashboard: React.FC = () => {
           type: "SET_OPTIONS",
           payload: { 
             schoolOptions: schoolsWithKeys,
-            gradeOptions: [] // Reset grades when district changes
+            gradeOptions: [] 
           },
         });
   
-        // Reset school and grade if no longer valid
         const currentSchoolValid = state.filters.school && 
           schoolsWithKeys.some((s: SchoolOption) => s.value === state.filters.school);
   
@@ -503,9 +459,7 @@ const AlertsDashboard: React.FC = () => {
     [state.filters.school]
   );
 
-/**
- * Fetches grades for selected school (NO AUTO-RELOAD)
- */
+
 const fetchGradesForSchool = useCallback(
   async (school: string, district: string): Promise<void> => {
     if (!school || !district) {
@@ -517,7 +471,6 @@ const fetchGradesForSchool = useCallback(
     }
 
     try {
-      // Show loading state for grades dropdown only
       dispatch({
         type: "SET_OPTIONS",
         payload: {
@@ -557,7 +510,6 @@ const fetchGradesForSchool = useCallback(
         payload: { gradeOptions: formattedGrades },
       });
 
-      // Reset grade selection if current grade is not in the new list
       if (
         state.filters.grade &&
         !formattedGrades.some((g) => g.value === state.filters.grade)
@@ -592,7 +544,6 @@ const fetchAnalysisData = useCallback(async (): Promise<
   dispatch({ type: "SET_UI", payload: { isGlobalView: false } });
 
   try {
-    // Create proper search criteria structure
     const searchCriteria: SearchCriteria = {
       district_code: state.filters.district
         ? processDistrictCode(state.filters.district)
@@ -629,9 +580,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
   }
 }, [state.filters]);
 
-  /**
-   * Resets all filters and fetches global data
-   */
+  
   const resetFiltersAndFetchGlobal = useCallback(async (): Promise<void> => {
     try {
       dispatch({ type: "SET_LOADING", payload: { isLoading: true } });
@@ -683,9 +632,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
     }
   }, []);
   
-  /**
-   * Downloads a report of specified type
-   */
+
   const downloadReport = useCallback(
     async (reportType: string): Promise<void> => {
       try {
@@ -725,13 +672,10 @@ const fetchAnalysisData = useCallback(async (): Promise<
     [state.filters]
   );
 
-  // ============================================================================
-  // EVENT HANDLERS
-  // ============================================================================
+  
 
   const handleFilterChange = useCallback(
     (field: keyof FilterState, value: string) => {
-      // If district is changing, clear school and grade filters
       if (field === 'district' && value !== state.filters.district) {
         dispatch({ type: "SET_FILTER", payload: { field: "district", value } });
         dispatch({ type: "SET_FILTER", payload: { field: "school", value: "" } });
@@ -750,18 +694,13 @@ const fetchAnalysisData = useCallback(async (): Promise<
     });
   }, [state.ui.showFilters]);
 
-  // ============================================================================
-  // EFFECTS
-  // ============================================================================
-
-  // Set auth token when it changes
+ 
   useEffect(() => {
     if (token) {
       setAuthToken(token);
     }
   }, [token]);
 
-  // Fetch initial data on mount
   useEffect(() => {
     fetchInitialData();
 
@@ -772,12 +711,10 @@ const fetchAnalysisData = useCallback(async (): Promise<
     };
   }, []);
 
-  // Fetch schools when district changes (NO AUTO-RELOAD)
   useEffect(() => {
     fetchSchoolsForDistrict(state.filters.district);
   }, [state.filters.district, fetchSchoolsForDistrict]);
 
-  // Fetch grades when school changes (NO AUTO-RELOAD)
   useEffect(() => {
     if (state.filters.school) {
       fetchGradesForSchool(state.filters.school, state.filters.district);
@@ -793,13 +730,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
     }
   }, [state.filters.school, state.filters.district, fetchGradesForSchool]);
 
-  // ============================================================================
-  // RENDER HELPER COMPONENTS
-  // ============================================================================
-
-  /**
-   * Loading skeleton for summary cards
-   */
+  
   const LoadingSkeletonCards: React.FC = () => (
     <>
       {[1, 2, 3, 4, 5].map((i) => (
@@ -815,9 +746,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
     </>
   );
 
-  /**
-   * Report downloading modal overlay
-   */
+ 
   const ReportDownloadingModal: React.FC = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-4 rounded-lg shadow-lg">
@@ -829,12 +758,9 @@ const fetchAnalysisData = useCallback(async (): Promise<
     </div>
   );
 
-  /**
-   * Filter section component
-   */
+  
   const FilterSection: React.FC = () => (
     <div className="w-full lg:w-64 p-4 bg-white shadow rounded-md h-fit sticky top-4">
-      {/* District Filter */}
       <div className="mb-4">
         <label
           className="block text-sm font-medium mb-1"
@@ -862,7 +788,6 @@ const fetchAnalysisData = useCallback(async (): Promise<
         </select>
       </div>
 
-      {/* School Filter */}
       <div className="mb-4">
         <label
           className="block text-sm font-medium mb-1"
@@ -890,7 +815,6 @@ const fetchAnalysisData = useCallback(async (): Promise<
         </select>
       </div>
 
-      {/* Grade Filter */}
       <div className="mb-4">
         <label
           className="block text-sm font-medium mb-1"
@@ -918,7 +842,6 @@ const fetchAnalysisData = useCallback(async (): Promise<
         </select>
       </div>
 
-      {/* Action Buttons */}
       <div className="flex gap-2">
         <button
           onClick={fetchAnalysisData}
@@ -942,7 +865,6 @@ const fetchAnalysisData = useCallback(async (): Promise<
         </button>
       </div>
 
-      {/* Download Reports Section */}
       <div className="mt-6 border-t pt-4">
         <h3 className="text-sm font-medium mb-3">Download Reports</h3>
         <div className="space-y-2">
@@ -975,9 +897,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
     </div>
   );
 
-  /**
-   * Summary statistics cards
-   */
+ 
   const SummaryCards: React.FC = () => {
     if (!state.analysisData) return null;
 
@@ -1036,9 +956,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
     );
   };
 
-  /**
-   * AI Insights and Recommendations panels
-   */
+  
   const InsightsAndRecommendations: React.FC = () => {
     if (!state.analysisData) return null;
 
@@ -1108,12 +1026,9 @@ const fetchAnalysisData = useCallback(async (): Promise<
     );
   };
 
-  /**
-   * Status notifications (error, global view, loading)
-   */
+  
   const StatusNotifications: React.FC = () => (
     <>
-      {/* Error Notification */}
       {state.errors.generalError && (
         <div className="w-full">
           <div
@@ -1154,7 +1069,6 @@ const fetchAnalysisData = useCallback(async (): Promise<
         </div>
       )}
 
-      {/* Global View Notification */}
       {state.ui.isGlobalView && state.analysisData && (
         <div className="w-full">
           <div
@@ -1176,7 +1090,6 @@ const fetchAnalysisData = useCallback(async (): Promise<
         </div>
       )}
 
-      {/* Loading Notification */}
       {(state.loading.isLoading || state.loading.isInitialLoad) &&
         !state.errors.generalError && (
           <div className="w-full">
@@ -1216,13 +1129,9 @@ const fetchAnalysisData = useCallback(async (): Promise<
     </>
   );
 
-  // ============================================================================
-  // MAIN RENDER
-  // ============================================================================
-
+ 
   return (
     <div className="min-h-screen bg-gray-50/50 relative">
-      {/* Download Progress Modal */}
       {state.loading.isDownloadingReport && <ReportDownloadingModal />}
 
       <div className="container mx-auto px-4 py-4 max-w-full">

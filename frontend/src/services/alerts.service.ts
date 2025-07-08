@@ -1,8 +1,5 @@
 import axiosInstance from "@/lib/axios";
 
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
 
 export interface DistrictOption {
   value: string;
@@ -87,14 +84,8 @@ export interface ApiError {
   message?: string;
 }
 
-// ============================================================================
-// ALERTS SERVICE CLASS
-// ============================================================================
 
 class AlertsService {
-  /**
-   * Fetches initial filter options (districts, schools, grades)
-   */
   async getFilterOptions(): Promise<FilterOptionsResponse> {
     try {
       const response = await axiosInstance.get<FilterOptionsResponse>(
@@ -107,9 +98,7 @@ class AlertsService {
     }
   }
 
-  /**
-   * Fetches schools for a specific district
-   */
+
   async getSchoolsByDistrict(params: {
     district: string;
   }): Promise<SchoolOption[]> {
@@ -127,33 +116,12 @@ class AlertsService {
     }
   }
 
-  /**
-   * Fetches all schools (no district filter)
-   */
-  async getAllSchools(): Promise<SchoolOption[]> {
-    try {
-      const response = await axiosInstance.get<SchoolOption[]>(
-        "schools"
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching all schools:", error);
-      throw this.handleError(error as ApiError);
-    }
-  }
-
-  /**
-   * Fetches grades for a specific school
-   */
-  /**
-   * Fetches grades for a specific school
-   */
+  
   async getGradesBySchool(params: {
     school: string;
     district: string;
   }): Promise<GradeOption[]> {
     try {
-      // Log the parameters being sent
       console.log("Sending grades request with params:", params);
 
       const response = await axiosInstance.get<GradeOption[]>(
@@ -174,9 +142,7 @@ class AlertsService {
     }
   }
 
-  /**
-   * Fetches AI-driven analysis and insights based on search criteria
-   */
+
   async getPredictionInsights(criteria: SearchCriteria): Promise<AnalysisData> {
     try {
       const response = await axiosInstance.post<AnalysisData>(
@@ -196,9 +162,7 @@ class AlertsService {
     }
   }
 
-  /**
-   * Downloads a report of specified type
-   */
+ 
   async downloadReport(
     reportType: string,
     criteria: DownloadCriteria
@@ -224,44 +188,32 @@ class AlertsService {
     }
   }
 
-  /**
-   * Downloads summary report
-   */
+
   async downloadSummaryReport(criteria: DownloadCriteria): Promise<Blob> {
     return this.downloadReport("summary", criteria);
   }
 
-  /**
-   * Downloads detailed report
-   */
+ 
   async downloadDetailedReport(criteria: DownloadCriteria): Promise<Blob> {
     return this.downloadReport("detailed", criteria);
   }
 
-  /**
-   * Downloads below 85% attendance report
-   */
+
   async downloadBelow85Report(criteria: DownloadCriteria): Promise<Blob> {
     return this.downloadReport("below_85", criteria);
   }
 
-  /**
-   * Downloads tier 1 students report
-   */
+ 
   async downloadTier1Report(criteria: DownloadCriteria): Promise<Blob> {
     return this.downloadReport("tier1", criteria);
   }
 
-  /**
-   * Downloads tier 4 students report
-   */
+ 
   async downloadTier4Report(criteria: DownloadCriteria): Promise<Blob> {
     return this.downloadReport("tier4", criteria);
   }
 
-  /**
-   * Handles API errors and extracts user-friendly messages
-   */
+
   private handleError(error: ApiError): Error {
     let message = "An unexpected error occurred";
 
@@ -284,9 +236,7 @@ class AlertsService {
     return new Error(message);
   }
 
-  /**
-   * Utility method to trigger file download from blob
-   */
+ 
   triggerDownload(blob: Blob, filename: string): void {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -298,9 +248,7 @@ class AlertsService {
     window.URL.revokeObjectURL(url);
   }
 
-  /**
-   * Generates filename for report downloads
-   */
+
   generateReportFilename(
     reportType: string,
     extension: string = "xlsx"
@@ -310,9 +258,6 @@ class AlertsService {
   }
 }
 
-// ============================================================================
-// EXPORT SINGLETON INSTANCE
-// ============================================================================
 
 export const alertsService = new AlertsService();
 export default alertsService;
