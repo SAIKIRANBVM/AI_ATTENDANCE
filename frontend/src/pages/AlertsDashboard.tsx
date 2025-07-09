@@ -294,6 +294,12 @@ const AlertsDashboard: React.FC = () => {
 
   const [state, dispatch] = useReducer(appReducer, initialState);
   const { token, ready } = useAuth();
+  const authReady = ready && !!token;
+
+  useEffect(() => {
+    if (!authReady) return;
+    setAuthToken(token); 
+  }, [authReady, token]);
 
   
   const fetchInitialData = useCallback(async (): Promise<void> => {
@@ -694,14 +700,11 @@ const fetchAnalysisData = useCallback(async (): Promise<
     });
   }, [state.ui.showFilters]);
 
- 
-  useEffect(() => {
-    if (token) {
-      setAuthToken(token);
-    }
-  }, [token]);
+
+
 
   useEffect(() => {
+    if (!authReady) return;
     fetchInitialData();
 
     return () => {
@@ -709,7 +712,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
         clearTimeout(state.loadTimer);
       }
     };
-  }, []);
+  }, [authReady, fetchInitialData, state.loadTimer]);
 
   useEffect(() => {
     fetchSchoolsForDistrict(state.filters.district);

@@ -116,6 +116,17 @@ class AlertsService {
     }
   }
 
+  async getAllSchools(): Promise<SchoolOption[]> {
+    try {
+      const response = await axiosInstance.get<SchoolOption[]>(
+        "schools"
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all schools:", error);
+      throw this.handleError(error as ApiError);
+    }
+  }
   
   async getGradesBySchool(params: {
     school: string;
