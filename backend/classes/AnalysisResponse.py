@@ -6,6 +6,6 @@ from backend.classes.KeyInsight import KeyInsight
 from backend.classes.Recommendation import Recommendation
 
 class AnalysisResponse(BaseModel):
-    summary_statistics: SummaryStatistics
-    key_insights: List[KeyInsight]
+    summaryStatistics: SummaryStatistics
+    keyInsights: List[KeyInsight]
     recommendations: List[Recommendation]

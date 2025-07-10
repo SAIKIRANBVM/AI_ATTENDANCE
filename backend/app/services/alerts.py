@@ -62,10 +62,10 @@ def get_analysis(search_criteria: FilterCriteria):
             logger.error(traceback.format_exc())
             raise HTTPException(status_code=500, detail=f"Error accessing data: {str(df_error)}")
         
-        if any([search_criteria.district_code, search_criteria.grade_code, search_criteria.school_code]):
+        if any([search_criteria.districtCode, search_criteria.gradeCode, search_criteria.schoolCode]):
             logger.info("Applying filters to dataset...")
             try:
-                df = FilterService.filter_data(df, district_code=search_criteria.district_code, school_code=search_criteria.school_code, grade_code=search_criteria.grade_code).copy()
+                df = FilterService.filter_data(df, district_code=search_criteria.districtCode, school_code=search_criteria.schoolCode, grade_code=search_criteria.gradeCode).copy()
                 logger.info(f"Filtered dataset size: {len(df)} rows")
             except Exception as filter_error:
                 logger.error(f"Error in FilterService.filter_data: {str(filter_error)}")
@@ -73,7 +73,7 @@ def get_analysis(search_criteria: FilterCriteria):
                 raise HTTPException(status_code=400, detail=f"Error applying filters: {str(filter_error)}")
                 
         if len(df) == 0:
-            error_msg = f'No data found for filters: district={search_criteria.district_code}, grade={search_criteria.grade_code}, school={search_criteria.school_code}'
+            error_msg = f'No data found for filters: district={search_criteria.districtCode}, grade={search_criteria.gradeCode}, school={search_criteria.schoolCode}'
             logger.warning(error_msg)
             raise HTTPException(status_code=404, detail=error_msg)
         
@@ -100,19 +100,19 @@ def get_analysis(search_criteria: FilterCriteria):
         grade_prediction = round(df['Predictions_Grade'].mean() * 100, 1) if 'Predictions_Grade' in df.columns and not df['Predictions_Grade'].isna().all() else None
         
         summary = SummaryStatistics(
-            total_students=total_students, below_85_students=below_85_students, 
-            below_85_percentage=below_85_students / total_students * 100 if total_students else 0.0, 
-            tier4_students=tier4, tier4_percentage=tier4 / total_students * 100 if total_students else 0.0, 
-            tier3_students=tier3, tier3_percentage=tier3 / total_students * 100 if total_students else 0.0, 
-            tier2_students=tier2, tier2_percentage=tier2 / total_students * 100 if total_students else 0.0, 
-            tier1_students=tier1, tier1_percentage=tier1 / total_students * 100 if total_students else 0.0,
-            school_prediction=school_prediction, grade_prediction=grade_prediction
+            totalStudents=total_students, below85Students=below_85_students, 
+            below85Percentage=below_85_students / total_students * 100 if total_students else 0.0, 
+            tier4Students=tier4, tier4Percentage=tier4 / total_students * 100 if total_students else 0.0, 
+            tier3Students=tier3, tier3Percentage=tier3 / total_students * 100 if total_students else 0.0, 
+            tier2Students=tier2, tier2Percentage=tier2 / total_students * 100 if total_students else 0.0, 
+            tier1Students=tier1, tier1Percentage=tier1 / total_students * 100 if total_students else 0.0,
+            schoolPrediction=school_prediction, gradePrediction=grade_prediction
         )
         
         insights = GenerationService.generate_insights(df)
         recommendations = GenerationService.generate_recommendations(df)
         logger.info(f'AI analysis completed in {time.time() - start_time:.4f} seconds')
-        return AnalysisResponse(summary_statistics=summary, key_insights=insights, recommendations=recommendations)
+        return AnalysisResponse(summaryStatistics=summary, keyInsights=insights, recommendations=recommendations)
     except Exception as e:
         logger.error(f'Error in get_analysis: {str(e)}')
         raise HTTPException(status_code=500, detail=str(e))
@@ -162,7 +162,7 @@ def get_filter_options():
         flat_schools = []
         for district in districts:
             for school in district['schools']:
-                flat_schools.append({'value': school['value'], 'label': school['label'], 'district_code': school['district']})
+                flat_schools.append({'value': school['value'], 'label': school['label'], 'districtCode': school['district']})
         
         flat_grades = []
         grade_count = 0
@@ -180,7 +180,7 @@ def get_filter_options():
                     if not grade_value.startswith('G'):
                         grade_value = f"G{grade_value}"
                     
-                    grade_entry = {'value': grade_value, 'label': f"Grade {grade_value.replace('G', '')}", 'school_code': school['value'], 'district_code': district['value']}
+                    grade_entry = {'value': grade_value, 'label': f"Grade {grade_value.replace('G', '')}", 'schoolCode': school['value'], 'districtCode': district['value']}
                     flat_grades.append(grade_entry)
                     school_grade_count += 1
                     grade_count += 1
@@ -206,7 +206,7 @@ def get_filter_options():
 def download_report(criteria: FilterCriteria, report_type: str):
     try:
         logger.info(f"Starting report generation for type: {report_type}")
-        logger.info(f"Filters - District: {criteria.district_code}, School: {criteria.school_code}, Grade: {criteria.grade_code}")
+        logger.info(f"Filters - District: {criteria.districtCode}, School: {criteria.schoolCode}, Grade: {criteria.gradeCode}")
         
         if not data_store.is_ready:
             raise HTTPException(status_code=503, detail='Data not loaded yet')
@@ -214,13 +214,13 @@ def download_report(criteria: FilterCriteria, report_type: str):
         df = data_store.df.copy() #type:ignore
         logger.info(f"Initial data shape: {df.shape}")
         
-        if any([criteria.district_code, criteria.grade_code, criteria.school_code]):
+        if any([criteria.districtCode, criteria.gradeCode, criteria.schoolCode]):
             logger.info("Applying filters to data...")
-            df = FilterService.filter_data(df, district_code=criteria.district_code, grade_code=criteria.grade_code, school_code=criteria.school_code)
+            df = FilterService.filter_data(df, district_code=criteria.districtCode, grade_code=criteria.gradeCode, school_code=criteria.schoolCode)
             logger.info(f"Data shape after filtering: {df.shape}")
         
         if len(df) == 0:
-            error_msg = f"No data found for the selected filters. District: {criteria.district_code}, School: {criteria.school_code}, Grade: {criteria.grade_code}"
+            error_msg = f"No data found for the selected filters. District: {criteria.districtCode}, School: {criteria.schoolCode}, Grade: {criteria.gradeCode}"
             logger.warning(error_msg)
             raise HTTPException(status_code=404, detail=error_msg)
         
@@ -302,7 +302,7 @@ def get_schools(district: Optional[str] = None) -> List[SchoolResponse]:
     
     if not district:
         school_groups = df.groupby(['DISTRICT_CODE', 'DISTRICT_NAME', 'LOCATION_ID', 'SCHOOL_NAME']).size().reset_index() #type:ignore
-        return [SchoolResponse(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), district_code=str(row['DISTRICT_CODE']).strip()) for _, row in school_groups.iterrows()]
+        return [SchoolResponse(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), districtCode=str(row['DISTRICT_CODE']).strip()) for _, row in school_groups.iterrows()]
     
     district = str(district).strip()
     district_filter = (df['DISTRICT_CODE'].astype(str).str.strip() == district) #type:ignore
@@ -316,7 +316,7 @@ def get_schools(district: Optional[str] = None) -> List[SchoolResponse]:
     filtered_df = df[df['DISTRICT_CODE'].astype(str).str.strip() == actual_district_code] #type:ignore
     school_groups = filtered_df.groupby(['LOCATION_ID', 'SCHOOL_NAME']).size().reset_index() #type:ignore
     
-    return [SchoolResponse(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), district_code=actual_district_code) for _, row in school_groups.iterrows()]
+    return [SchoolResponse(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), districtCode=actual_district_code) for _, row in school_groups.iterrows()]
 
 
 def get_grades(district: str | None = None, school: str | None = None) -> List[GradeResponse]:
@@ -389,7 +389,7 @@ def get_grades(district: str | None = None, school: str | None = None) -> List[G
             except (ValueError, TypeError):
                 return (float('inf'), grade_str)
         
-        return [GradeResponse(value=grade, label='PK' if grade == '-1' else ('K' if grade == '0' else grade), district_code=district if district else None, school_code=school if school else None) for grade in sorted(unique_grades, key=grade_sort_key)]
+        return [GradeResponse(value=grade, label='PK' if grade == '-1' else ('K' if grade == '0' else grade), districtCode=district if district else None, schoolCode=school if school else None) for grade in sorted(unique_grades, key=grade_sort_key)]
         
     except Exception as e:
         logger.error(f'Error getting grades: {str(e)}', exc_info=True)

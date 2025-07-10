@@ -39,10 +39,10 @@ interface GradeOption {
 }
 
 interface SummaryStatistics {
-  total_students: number;
-  below_85_students: number;
-  tier1_students: number;
-  tier4_students: number;
+  totalStudents: number;
+  below85Students: number;
+  tier1Students: number;
+  tier4Students: number;
 }
 
 interface InsightItem {
@@ -56,8 +56,8 @@ interface RecommendationItem {
 }
 
 interface AnalysisData {
-  summary_statistics: SummaryStatistics;
-  key_insights: Array<string | InsightItem>;
+  summaryStatistics: SummaryStatistics;
+  keyInsights: Array<string | InsightItem>;
   recommendations: Array<string | RecommendationItem>;
 }
 
@@ -76,14 +76,13 @@ interface ApiError {
 }
 
 interface SearchCriteria {
-  district_code?: string;
-  grade_code?: string;
-  school_code?: string;
-  student_id?: string;
+  districtCode?: string;
+  gradeCode?: string;
+  schoolCode?: string;
 }
 
 interface DownloadCriteria extends SearchCriteria {
-  report_type?: string;
+  reportType?: string;
 }
 
 
@@ -234,12 +233,11 @@ const extractSchoolCode = (schoolValue: string): string => {
 
 
 const createSearchCriteria = (filters: FilterState): SearchCriteria => ({
-  district_code: filters.district
+  districtCode: filters.district
     ? processDistrictCode(filters.district)
     : undefined,
-  grade_code: filters.grade || undefined,
-  school_code: filters.school ? extractSchoolCode(filters.school) : undefined,
-  student_id: undefined,
+  gradeCode: filters.grade || undefined,
+  schoolCode: filters.school ? extractSchoolCode(filters.school) : undefined,
 });
 
 
@@ -363,9 +361,9 @@ const AlertsDashboard: React.FC = () => {
 
       try {
         const searchCriteria = {
-          district_code: "",
-          grade_code: "",
-          school_code: ""
+          districtCode: "",
+          gradeCode: "",
+          schoolCode: ""
         };
 
         const analysisRes = await alertsService.getPredictionInsights(searchCriteria);
@@ -550,14 +548,13 @@ const fetchAnalysisData = useCallback(async (): Promise<
 
   try {
     const searchCriteria: SearchCriteria = {
-      district_code: state.filters.district
+      districtCode: state.filters.district
         ? processDistrictCode(state.filters.district)
         : undefined,
-      grade_code: state.filters.grade || undefined,
-      school_code: state.filters.school 
+      gradeCode: state.filters.grade || undefined,
+      schoolCode: state.filters.school 
         ? extractSchoolCode(state.filters.school) 
         : undefined,
-      student_id: undefined,
     };
 
     console.log(
@@ -597,9 +594,9 @@ const fetchAnalysisData = useCallback(async (): Promise<
       });
   
       const searchCriteria = {
-        district_code: undefined,
-        grade_code: undefined,
-        school_code: undefined,
+        districtCode: undefined,
+        gradeCode: undefined,
+        schoolCode: undefined,
       };
   
       const [analysisData, schoolsData] = await Promise.all([
@@ -649,7 +646,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
   
         const downloadCriteria: DownloadCriteria = {
           ...createSearchCriteria(state.filters),
-          report_type: reportType,
+          reportType: reportType,
         };
   
         console.log("Download criteria:", downloadCriteria);
@@ -906,25 +903,25 @@ const fetchAnalysisData = useCallback(async (): Promise<
     const cardConfigs = [
       {
         title: "Total Students",
-        value: state.analysisData.summary_statistics.total_students,
+        value: state.analysisData.summaryStatistics.totalStudents,
         reportType: "summary",
         icon: null,
       },
       {
         title: "Below 85% Attendance",
-        value: state.analysisData.summary_statistics.below_85_students,
+        value: state.analysisData.summaryStatistics.below85Students,
         reportType: "below_85",
         icon: <AlertCircle size={14} className="text-[#03787c]" />,
       },
       {
         title: "Tier 1 Students (≥95%)",
-        value: state.analysisData.summary_statistics.tier1_students,
+        value: state.analysisData.summaryStatistics.tier1Students,
         reportType: "tier1",
         icon: null,
       },
       {
         title: "Tier 4 Students (<80%)",
-        value: state.analysisData.summary_statistics.tier4_students,
+        value: state.analysisData.summaryStatistics.tier4Students,
         reportType: "tier4",
         icon: null,
       },
@@ -1015,7 +1012,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
         <InsightPanel
           title="AI DRIVEN Key Insights"
           icon="ℹ️"
-          items={state.analysisData.key_insights}
+          items={state.analysisData.keyInsights}
           emptyMessage="No insights available"
         />
         <InsightPanel

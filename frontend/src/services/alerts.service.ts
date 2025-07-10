@@ -22,10 +22,10 @@ export interface GradeOption {
 }
 
 export interface SummaryStatistics {
-  total_students: number;
-  below_85_students: number;
-  tier1_students: number;
-  tier4_students: number;
+  totalStudents: number;
+  below85Students: number;
+  tier1Students: number;
+  tier4Students: number;
 }
 
 export interface InsightItem {
@@ -39,8 +39,8 @@ export interface RecommendationItem {
 }
 
 export interface AnalysisData {
-  summary_statistics: SummaryStatistics;
-  key_insights: Array<string | InsightItem>;
+  summaryStatistics: SummaryStatistics;
+  keyInsights: Array<string | InsightItem>;
   recommendations: Array<string | RecommendationItem>;
 }
 
@@ -51,13 +51,13 @@ export interface FilterOptionsResponse {
 }
 
 export interface SearchCriteria {
-  district_code?: string;
-  grade_code?: string;
-  school_code?: string;
+  districtCode?: string;
+  gradeCode?: string;
+  schoolCode?: string;
 }
 
 export interface DownloadCriteria extends SearchCriteria {
-  report_type?: string;
+  reportType?: string;
 }
 
 export interface SchoolFilterParams {
@@ -180,7 +180,7 @@ class AlertsService {
     try {
       const downloadCriteria: DownloadCriteria = {
         ...criteria,
-        report_type: reportType,
+        reportType: reportType,
       };
 
       const response = await axiosInstance.post(

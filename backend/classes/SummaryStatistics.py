@@ -2,16 +2,16 @@ from pydantic import BaseModel
 from typing import Optional
 
 class SummaryStatistics(BaseModel):
-    total_students: int
-    below_85_students: int
-    below_85_percentage: float
-    tier4_students: int
-    tier4_percentage: float
-    tier3_students: int
-    tier3_percentage: float
-    tier2_students: int
-    tier2_percentage: float
-    tier1_students: int
-    tier1_percentage: float
-    school_prediction: Optional[float] = None
-    grade_prediction: Optional[float] = None
+    totalStudents: int
+    below85Students: int
+    below85Percentage: float
+    tier4Students: int
+    tier4Percentage: float
+    tier3Students: int
+    tier3Percentage: float
+    tier2Students: int
+    tier2Percentage: float
+    tier1Students: int
+    tier1Percentage: float
+    schoolPrediction: Optional[float] = None
+    gradePrediction: Optional[float] = None
