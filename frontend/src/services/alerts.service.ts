@@ -54,7 +54,6 @@ export interface SearchCriteria {
   district_code?: string;
   grade_code?: string;
   school_code?: string;
-  student_id?: string;
 }
 
 export interface DownloadCriteria extends SearchCriteria {

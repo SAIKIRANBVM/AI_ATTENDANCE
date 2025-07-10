@@ -297,7 +297,7 @@ const AlertsDashboard: React.FC = () => {
   const authReady = ready && !!token;
 
   useEffect(() => {
-    if (!authReady) return;
+    // if (!authReady) return; 
     setAuthToken(token); 
   }, [authReady, token]);
 
@@ -363,10 +363,9 @@ const AlertsDashboard: React.FC = () => {
 
       try {
         const searchCriteria = {
-          district_name: "",
-          gradelevel: "",
-          school_name: "",
-          student_id: "",
+          district_code: "",
+          grade_code: "",
+          school_code: ""
         };
 
         const analysisRes = await alertsService.getPredictionInsights(searchCriteria);
@@ -704,7 +703,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
 
 
   useEffect(() => {
-    if (!authReady) return;
+    if (!authReady) return; 
     fetchInitialData();
 
     return () => {

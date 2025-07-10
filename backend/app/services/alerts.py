@@ -112,7 +112,7 @@ def get_analysis(search_criteria: FilterCriteria):
         insights = GenerationService.generate_insights(df)
         recommendations = GenerationService.generate_recommendations(df)
         logger.info(f'AI analysis completed in {time.time() - start_time:.4f} seconds')
-        return AnalysisResponse(summaryStatistics=summary, keyInsights=insights, recommendations=recommendations)
+        return AnalysisResponse(summary_statistics=summary, key_insights=insights, recommendations=recommendations)
     except Exception as e:
         logger.error(f'Error in get_analysis: {str(e)}')
         raise HTTPException(status_code=500, detail=str(e))
