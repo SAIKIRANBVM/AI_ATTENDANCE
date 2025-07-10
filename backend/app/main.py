@@ -65,23 +65,23 @@ def filter_options():
 
 
 
-@app.get("/api/alerts/schools/district/{district_code}")
-def schools(district_code: str | None = None):
+@app.get("/api/alerts/schools/district/{districtCode}")
+def schools(districtCode: str | None = None):
     ready()
-    return alerts.get_schools(district_code)
+    return alerts.get_schools(districtCode)
 
 
-@app.get("/api/alerts/grades/district/{district_code}/school/{school_code}")
-def grades(district_code: str | None = None, school_code: str | None = None):
+@app.get("/api/alerts/grades/district/{districtCode}/school/{schoolCode}")
+def grades(districtCode: str | None = None, schoolCode: str | None = None):
     ready()
-    print(f"Fetching grades for district: {district_code}, school: {school_code}")
-    return alerts.get_grades(district_code, school_code)
+    print(f"Fetching grades for district: {districtCode}, school: {schoolCode}")
+    return alerts.get_grades(districtCode, schoolCode)
 
 
-@app.post("/api/alerts/download/report/{report_type}")
-def download_report(report_type: str, criteria: FilterCriteria):
+@app.post("/api/alerts/download/report/{reportType}")
+def download_report(reportType: str, criteria: FilterCriteria):
     ready()
-    return alerts.download_report(criteria, report_type)
+    return alerts.download_report(criteria, reportType)
 
 
 @app.get("/api/predictions/students")
