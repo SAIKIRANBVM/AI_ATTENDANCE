@@ -235,9 +235,9 @@ const extractSchoolCode = (schoolValue: string): string => {
 const createSearchCriteria = (filters: FilterState): SearchCriteria => ({
   districtCode: filters.district
     ? processDistrictCode(filters.district)
-    : undefined,
-  gradeCode: filters.grade || undefined,
-  schoolCode: filters.school ? extractSchoolCode(filters.school) : undefined,
+    : "",
+  gradeCode: filters.grade || "",
+  schoolCode: filters.school ? extractSchoolCode(filters.school) : "",
 });
 
 
@@ -547,15 +547,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
   dispatch({ type: "SET_UI", payload: { isGlobalView: false } });
 
   try {
-    const searchCriteria: SearchCriteria = {
-      districtCode: state.filters.district
-        ? processDistrictCode(state.filters.district)
-        : undefined,
-      gradeCode: state.filters.grade || undefined,
-      schoolCode: state.filters.school 
-        ? extractSchoolCode(state.filters.school) 
-        : undefined,
-    };
+    const searchCriteria: SearchCriteria = createSearchCriteria(state.filters)
 
     console.log(
       "Sending request to prediction-insights with data:",
@@ -708,7 +700,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
         clearTimeout(state.loadTimer);
       }
     };
-  }, [authReady, fetchInitialData, state.loadTimer]);
+  }, [authReady, state.loadTimer]);
 
   useEffect(() => {
     fetchSchoolsForDistrict(state.filters.district);
@@ -799,7 +791,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
           value={state.filters.school}
           onChange={(e) => handleFilterChange("school", e.target.value)}
           className="w-full p-2 border rounded text-sm bg-white border-[#C0D5DE] border-[1.6px] disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={!state.filters.district || !state.options.schoolOptions.length || state.loading.isInitialLoad}
+          disabled={!state.filters.district || !state.options.schoolOptions.length ||state.loading.isInitialLoad}
           aria-label="Select school"
         >
           <option value="">Select School</option>

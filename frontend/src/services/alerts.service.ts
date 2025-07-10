@@ -103,10 +103,7 @@ class AlertsService {
   }): Promise<SchoolOption[]> {
     try {
       const response = await axiosInstance.get<SchoolOption[]>(
-        "schools",
-        {
-          params: { district_code: params.district },
-        }
+        `schools/district/${params.district}`
       );
       return response.data;
     } catch (error) {
@@ -118,7 +115,7 @@ class AlertsService {
   async getAllSchools(): Promise<SchoolOption[]> {
     try {
       const response = await axiosInstance.get<SchoolOption[]>(
-        "schools"
+        `schools/district/-1`
       );
       return response.data;
     } catch (error) {
@@ -135,13 +132,7 @@ class AlertsService {
       console.log("Sending grades request with params:", params);
 
       const response = await axiosInstance.get<GradeOption[]>(
-        "grades",
-        {
-          params: {
-            school_code: params.school,
-            district_code: params.district,
-          },
-        }
+        `grades/district/${params.district}/school/${params.school}`
       );
 
       console.log("Received grades response:", response.data);

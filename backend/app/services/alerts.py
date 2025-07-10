@@ -296,27 +296,51 @@ def download_report(criteria: FilterCriteria, report_type: str):
 
 def get_schools(district: Optional[str] = None) -> List[SchoolResponse]:
     if not data_store.is_ready:
-        raise HTTPException(status_code=503, detail='Data is still being loaded. Please try again shortly.')
-    
+        raise HTTPException(
+            status_code=503,
+            detail="Data is still being loaded. Please try again shortly."
+        )
+
     df = data_store.df
-    
-    if not district:
-        school_groups = df.groupby(['DISTRICT_CODE', 'DISTRICT_NAME', 'LOCATION_ID', 'SCHOOL_NAME']).size().reset_index() #type:ignore
-        return [SchoolResponse(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), districtCode=str(row['DISTRICT_CODE']).strip()) for _, row in school_groups.iterrows()]
-    
+
+    is_all = district is None or str(district).strip() in {"", "-1"}
+    if is_all:
+        group_df = (
+            df.groupby(["DISTRICT_CODE", "LOCATION_ID", "SCHOOL_NAME"], as_index=False)
+              .first()
+        )
+
+        return [
+            SchoolResponse(
+                value=str(row["LOCATION_ID"]).strip(),
+                label=str(row["SCHOOL_NAME"]).strip(),
+                districtCode=str(row["DISTRICT_CODE"]).strip(),
+            )
+            for _, row in group_df.iterrows()
+        ]
+
     district = str(district).strip()
-    district_filter = (df['DISTRICT_CODE'].astype(str).str.strip() == district) #type:ignore
-    
-    if not district_filter.any():
-        return []
-    
-    matched_district = df[district_filter].iloc[0] #type:ignore
-    actual_district_code = str(matched_district['DISTRICT_CODE']).strip()
-    
-    filtered_df = df[df['DISTRICT_CODE'].astype(str).str.strip() == actual_district_code] #type:ignore
-    school_groups = filtered_df.groupby(['LOCATION_ID', 'SCHOOL_NAME']).size().reset_index() #type:ignore
-    
-    return [SchoolResponse(value=str(row['LOCATION_ID']).strip(), label=str(row['SCHOOL_NAME']).strip(), districtCode=actual_district_code) for _, row in school_groups.iterrows()]
+
+    mask = df["DISTRICT_CODE"].astype(str).str.strip() == district
+    if not mask.any():                 
+        return []                     
+
+    filtered_df = df.loc[mask]
+
+    group_df = (
+        filtered_df.groupby(["LOCATION_ID", "SCHOOL_NAME"], as_index=False)
+                   .first()
+    )
+
+    return [
+        SchoolResponse(
+            value=str(row["LOCATION_ID"]).strip(),
+            label=str(row["SCHOOL_NAME"]).strip(),
+            districtCode=district,
+        )
+        for _, row in group_df.iterrows()
+    ]
+
 
 
 def get_grades(district: str | None = None, school: str | None = None) -> List[GradeResponse]:
