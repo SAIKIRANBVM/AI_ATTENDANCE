@@ -9,5 +9,6 @@ class DataResponse(BaseModel):
     previousAttendance: float | None
     predictedAttendance: float
     predictedValues: AttendanceValues
+    chronicAbsenceRate: float
     metrics: List[StudentMetrics]
     trends: List[StudentTrend]

@@ -111,6 +111,7 @@ def _zero_response() -> DataResponse:
     return DataResponse(
         previousAttendance=0,
         predictedAttendance=0,
+        chronicAbsenceRate=0,
         predictedValues=AttendanceValues(year=str(p), predictedAttendance=0, totalDays=0),
         metrics=[],
         trends=[],
@@ -188,6 +189,7 @@ def get_all_districts_summary() -> DataResponse:
     total_days = round(enrolled_tot / len(cur_rows), 1)
     preds = pred[PRED_DIST_COL].dropna()
     pred_att = round(preds.mean() * 100, 1) if not preds.empty else 0
+    chronic_absence_rate = round(((preds[preds < 0.85].shape[0]) / cur_rows.shape[0]) * 100, 2)
     metrics = _aggregate_metrics(hist)
     trends  = _aggregate_trends(hist, preds.mean() if not preds.empty else None)
 
@@ -195,6 +197,7 @@ def get_all_districts_summary() -> DataResponse:
     return DataResponse(
         previousAttendance = prev_att,
         predictedAttendance = pred_att,
+        chronicAbsenceRate= chronic_absence_rate,
         predictedValues = AttendanceValues(
             year=str(get_predicted_year()),
             predictedAttendance=pred_att,
@@ -225,11 +228,14 @@ def get_district_summary(req: DataRequest) -> DataResponse:
     total_days = round(cur_rows[ENROLLED_COL].mean(), 1)
     district_pred = pred[PRED_DIST_COL].dropna()
     pred_att = round(district_pred.iloc[0] * 100, 1) if not district_pred.empty else 0
+    preds = pred[PRED_COL].dropna()
+    chronic_absence_rate = round(((preds[preds < 0.85].shape[0]) / cur_rows.shape[0]) * 100, 2)
     metrics = _aggregate_metrics(hist)
     trends = _aggregate_trends(hist, district_pred.iloc[0] if not district_pred.empty else None)
     return DataResponse(
         previousAttendance = prev_att,
         predictedAttendance = pred_att,
+        chronicAbsenceRate= chronic_absence_rate,
         predictedValues = AttendanceValues(
             year=str(get_predicted_year()), predictedAttendance=pred_att, totalDays=total_days
         ),
@@ -255,11 +261,14 @@ def get_school_summary(req: DataRequest) -> DataResponse:
     total_days = round(cur_rows[ENROLLED_COL].mean(), 1)
     school_pred = pred[PRED_SCH_COL].dropna()
     pred_att = round(school_pred.iloc[0] * 100, 1) if not school_pred.empty else 0
+    preds = pred[PRED_COL].dropna()
+    chronic_absence_rate = round(((preds[preds < 0.85].shape[0]) / cur_rows.shape[0]) * 100, 2)
     metrics = _aggregate_metrics(hist)
     trends = _aggregate_trends(hist, school_pred.iloc[0] if not school_pred.empty else None)
     return DataResponse(
         previousAttendance = prev_att,
         predictedAttendance = pred_att,
+        chronicAbsenceRate= chronic_absence_rate,
         predictedValues = AttendanceValues(
             year=str(get_predicted_year()), predictedAttendance=pred_att, totalDays=total_days
         ),
@@ -287,12 +296,15 @@ def get_grade_summary(req: DataRequest) -> DataResponse:
     total_days = round(cur_rows[ENROLLED_COL].mean(), 1)
     grade_pred = pred[PRED_GRD_COL].dropna()
     pred_att = round(grade_pred.iloc[0] * 100, 1) if not grade_pred.empty else 0
+    preds = pred[PRED_COL].dropna()
+    chronic_absence_rate = round(((preds[preds < 0.85].shape[0]) / cur_rows.shape[0]) * 100, 2)
     metrics = _aggregate_metrics(hist)
     trends = _aggregate_trends(hist, grade_pred.iloc[0] if not grade_pred.empty else None)
     return DataResponse(
-        previousAttendance  = prev_att,
+        previousAttendance = prev_att,
         predictedAttendance = pred_att,
-        predictedValues     = AttendanceValues(
+        chronicAbsenceRate= chronic_absence_rate,
+        predictedValues = AttendanceValues(
             year=str(get_predicted_year()), predictedAttendance=pred_att, totalDays=total_days
         ),
         metrics=metrics,
@@ -318,7 +330,7 @@ def get_student_summary(req: DataRequest) -> DataResponse:
     if cur_row.empty:
         return _zero_response()
     cur_row = cur_row.iloc[-1]
-    prev_att   = round((cur_row[PRESENT_COL] / cur_row[ENROLLED_COL]) * 100, 1)
+    prev_att = round((cur_row[PRESENT_COL] / cur_row[ENROLLED_COL]) * 100, 1)
     total_days = round(cur_row[ENROLLED_COL], 1)
     stu_pred = pred[pred["STUDENT_ID"] == cur_row.STUDENT_ID][PRED_COL].dropna()
     pred_att = (
@@ -347,6 +359,7 @@ def get_student_summary(req: DataRequest) -> DataResponse:
     return DataResponse(
         previousAttendance = prev_att,
         predictedAttendance = pred_att,
+        chronicAbsenceRate = 0,
         predictedValues = AttendanceValues(
             year=str(get_predicted_year()), predictedAttendance=pred_att, totalDays=total_days
         ),

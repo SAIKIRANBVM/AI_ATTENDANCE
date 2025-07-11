@@ -11,6 +11,7 @@ export interface FilterRequest {
 export interface AttendanceResponse {
   previousAttendance?: number;
   predictedAttendance?: number;
+  chronicAbsenceRate?: number;
   predictedValues?: {
     year: string;
     predictedAttendance: number;

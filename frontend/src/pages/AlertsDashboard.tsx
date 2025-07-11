@@ -585,11 +585,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
         payload: { gradeOptions: [] },
       });
   
-      const searchCriteria = {
-        districtCode: undefined,
-        gradeCode: undefined,
-        schoolCode: undefined,
-      };
+      const searchCriteria = createSearchCriteria(state.filters)
   
       const [analysisData, schoolsData] = await Promise.all([
         alertsService.getPredictionInsights(searchCriteria),

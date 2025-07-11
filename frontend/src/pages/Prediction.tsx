@@ -135,7 +135,6 @@ const Prediction: React.FC = () => {
         value: t.value,
         isPredicted: t.isPredicted,
       })) ?? [];
-
     return { history, trend, pred };
   }, [attendanceData]);
 
@@ -282,6 +281,15 @@ const Prediction: React.FC = () => {
                   : undefined
               }
               comparisonYear={curr?.year}
+            />
+
+            <MetricCard
+              title="Chronic Absence Rate"
+              value={
+                attendanceData?.chronicAbsenceRate
+                  ? `${attendanceData.chronicAbsenceRate}%`
+                  : "--"
+              }
             />
           </div>
 
