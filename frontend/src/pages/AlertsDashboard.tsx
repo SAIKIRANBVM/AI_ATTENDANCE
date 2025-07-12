@@ -42,6 +42,8 @@ interface SummaryStatistics {
   totalStudents: number;
   below85Students: number;
   tier1Students: number;
+  tier2Students: number;
+  tier3Students: number;
   tier4Students: number;
 }
 
@@ -260,7 +262,20 @@ const extractErrorMessage = (error: ApiError): string => {
 
 
 const formatTextWithHighlights = (text: string): string => {
-  return text.replace(/(\d+(?:\.\d+)?(?:-\d+(?:\.\d+)?)?%)/g, '<strong class="text-teal-700">$1</strong>');
+  // First, handle the entire line by making the first part bold
+  // This will make everything before the first colon bold, if a colon exists
+  let formattedText = text.replace(/^([^:]+)(:)/, '<strong class="font-semibold text-gray-900">$1</strong>:');
+  
+  // If no colon was found, try to make the first few words bold
+  if (formattedText === text) {
+    // This regex matches the first 2-5 words at the start of the string
+    formattedText = text.replace(/^(\w+(?:\s+\w+){0,4}\b)/, '<strong class="font-semibold text-gray-900">$1</strong>');
+  }
+  
+  // Still highlight percentages in teal
+  formattedText = formattedText.replace(/(\d+(?:\.\d+)?(?:-\d+(?:\.\d+)?)?%)/g, '<strong class="text-teal-700">$1</strong>');
+  
+  return formattedText;
 };
 
 
@@ -586,9 +601,9 @@ const fetchAnalysisData = useCallback(async (): Promise<
       });
   
       const searchCriteria = {
-        districtCode: undefined,
-        gradeCode: undefined,
-        schoolCode: undefined,
+        districtCode: "",
+        gradeCode: "",
+        schoolCode: "",
       };
   
       const [analysisData, schoolsData] = await Promise.all([
@@ -889,6 +904,67 @@ const fetchAnalysisData = useCallback(async (): Promise<
   );
 
  
+  // const SummaryCards: React.FC = () => {
+  //   if (!state.analysisData) return null;
+
+  //   const cardConfigs = [
+  //     {
+  //       title: "Total Students",
+  //       value: state.analysisData.summaryStatistics.totalStudents,
+  //       reportType: "summary",
+  //       icon: null,
+  //     },
+  //     {
+  //       title: "Below 85% Attendance",
+  //       value: state.analysisData.summaryStatistics.below85Students,
+  //       reportType: "below_85",
+  //       icon: <AlertCircle size={14} className="text-[#03787c]" />,
+  //     },
+  //     {
+  //       title: "Tier 1 Students (≥95%)",
+  //       value: state.analysisData.summaryStatistics.tier1Students,
+  //       reportType: "tier1",
+  //       icon: null,
+  //     },
+  //     {
+  //       title: "Tier 4 Students (<80%)",
+  //       value: state.analysisData.summaryStatistics.tier4Students,
+  //       reportType: "tier4",
+  //       icon: null,
+  //     },
+  //   ];
+
+  //   return (
+  //     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  //       {cardConfigs.map((config, index) => (
+  //         <Card key={index} className="bg-white border border-[#C0D5DE]">
+  //           <CardHeader className="pb-1 pt-3">
+  //             <CardTitle className="text-base flex items-center gap-1">
+  //               {config.icon}
+  //               {config.title}
+  //             </CardTitle>
+  //           </CardHeader>
+  //           <CardContent className="pb-3 pt-1 flex justify-between items-center">
+  //             <span className="text-2xl font-semibold">{config.value}</span>
+  //             <button
+  //               onClick={() => downloadReport(config.reportType)}
+  //               className="text-xs bg-[#03787c] text-white p-1 rounded flex items-center gap-1 hover:bg-[#026266]"
+  //               title={`Download ${config.title} Report`}
+  //               aria-label={`Download ${config.title} report`}
+  //             >
+  //               <Download size={12} />
+  //               Export
+  //             </button>
+  //           </CardContent>
+  //         </Card>
+  //       ))}
+  //     </div>
+  //   );
+  // };
+
+  /**
+   * Summary statistics cards
+   */
   const SummaryCards: React.FC = () => {
     if (!state.analysisData) return null;
 
@@ -898,48 +974,67 @@ const fetchAnalysisData = useCallback(async (): Promise<
         value: state.analysisData.summaryStatistics.totalStudents,
         reportType: "summary",
         icon: null,
+        bgColor: "bg-blue-50",
+        textColor: "text-blue-800"
       },
       {
-        title: "Below 85% Attendance",
-        value: state.analysisData.summaryStatistics.below85Students,
-        reportType: "below_85",
-        icon: <AlertCircle size={14} className="text-[#03787c]" />,
-      },
-      {
-        title: "Tier 1 Students (≥95%)",
+        title: "Tier 1 (≥95%)",
         value: state.analysisData.summaryStatistics.tier1Students,
         reportType: "tier1",
         icon: null,
+        bgColor: "bg-green-50",
+        textColor: "text-green-800"
       },
       {
-        title: "Tier 4 Students (<80%)",
+        title: "Tier 2 (90-95%)",
+        value: state.analysisData.summaryStatistics.tier2Students || 0,
+        reportType: "tier2",
+        icon: null,
+        bgColor: "bg-emerald-50",
+        textColor: "text-emerald-800"
+      },
+      {
+        title: "Tier 3 (80-90%)",
+        value: state.analysisData.summaryStatistics.tier3Students || 0,
+        reportType: "tier3",
+        icon: null,
+        bgColor: "bg-amber-50",
+        textColor: "text-amber-800"
+      },
+      {
+        title: "Tier 4 (<80%)",
         value: state.analysisData.summaryStatistics.tier4Students,
         reportType: "tier4",
         icon: null,
-      },
+        bgColor: "bg-orange-50",
+        textColor: "text-orange-800"
+      }
     ];
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {cardConfigs.map((config, index) => (
-          <Card key={index} className="bg-white border border-[#C0D5DE]">
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-base flex items-center gap-1">
-                {config.icon}
-                {config.title}
-              </CardTitle>
+          <Card key={index} className={`${config.bgColor} border-0 shadow-sm hover:shadow-md transition-shadow`}>
+            <CardHeader className="pb-2 pt-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className={`text-sm font-medium ${config.textColor} flex items-center gap-1`}>
+                  {config.icon}
+                  {config.title}
+                </CardTitle>
+                <button
+                  onClick={() => downloadReport(config.reportType)}
+                  className="text-xs bg-white/80 hover:bg-white text-gray-700 px-2 py-1 rounded border border-gray-200 transition-colors"
+                  title={`Download ${config.title} Report`}
+                  aria-label={`Download ${config.title} report`}
+                >
+                  <Download size={12} />
+                </button>
+              </div>
             </CardHeader>
-            <CardContent className="pb-3 pt-1 flex justify-between items-center">
-              <span className="text-2xl font-semibold">{config.value}</span>
-              <button
-                onClick={() => downloadReport(config.reportType)}
-                className="text-xs bg-[#03787c] text-white p-1 rounded flex items-center gap-1 hover:bg-[#026266]"
-                title={`Download ${config.title} Report`}
-                aria-label={`Download ${config.title} report`}
-              >
-                <Download size={12} />
-                Export
-              </button>
+            <CardContent className="px-4 pb-3">
+              <div className={`text-2xl font-bold ${config.textColor}`}>
+                {config.value.toLocaleString()}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -947,7 +1042,6 @@ const fetchAnalysisData = useCallback(async (): Promise<
     );
   };
 
-  
   const InsightsAndRecommendations: React.FC = () => {
     if (!state.analysisData) return null;
 
@@ -956,13 +1050,36 @@ const fetchAnalysisData = useCallback(async (): Promise<
       icon: string;
       items: Array<string | InsightItem | RecommendationItem>;
       emptyMessage: string;
-    }> = ({ title, icon, items, emptyMessage }) => (
+      tooltip?: string;
+    }> = ({ title, icon, items, emptyMessage, tooltip }) => (
       <div className="flex-1 flex flex-col bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
-        <div className="bg-[#03787c] text-white px-4 h-11 flex items-center rounded-t-lg">
-          <span className="text-sm mr-2" role="img" aria-label={title}>
-            {icon}
-          </span>
-          <h3 className="font-semibold text-sm">{title}</h3>
+        <div className="bg-[#03787c] text-white px-4 h-11 flex items-center justify-between rounded-t-lg">
+          <div className="flex items-center">
+            <span className="text-sm mr-2" role="img" aria-label={title}>
+              {icon}
+            </span>
+            <h3 className="font-semibold text-sm">{title}</h3>
+          </div>
+          {tooltip && (
+            <div className="group relative">
+              <svg 
+                className="w-4 h-4 text-white/80 hover:text-white cursor-help" 
+                fill="currentColor" 
+                viewBox="0 0 20 20" 
+                xmlns="http://www.w3.org/2000/svg"
+                aria-label="More information"
+              >
+                <path 
+                  fillRule="evenodd" 
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" 
+                  clipRule="evenodd"
+                />
+              </svg>
+              <div className="absolute right-0 mt-2 w-64 p-2 text-xs text-gray-700 bg-white rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                {tooltip}
+              </div>
+            </div>
+          )}
         </div>
         <div className="overflow-y-auto max-h-[360px] p-3 bg-white rounded-b-lg text-xs">
           {items?.length > 0 ? (
@@ -1000,12 +1117,13 @@ const fetchAnalysisData = useCallback(async (): Promise<
     );
 
     return (
-      <div className="w-full flex flex-col md:flex-row gap-5 mt-4">
+      <div className="w-full flex flex-col gap-5 mt-4">
         <InsightPanel
-          title="AI DRIVEN Key Insights"
+          title="AI-Driven Key Insights & Recommendations"
           icon="ℹ️"
           items={state.analysisData.keyInsights}
           emptyMessage="No insights available"
+          tooltip="Generated by advanced AI models to highlight risks, trends, and next steps for improving attendance outcomes."
         />
         <InsightPanel
           title="AI Recommendations"
@@ -1130,7 +1248,28 @@ const fetchAnalysisData = useCallback(async (): Promise<
         <div className="mb-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
             <div>
-              <h1 className="text-2xl font-bold">Alerts Dashboard</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">AI-Driven Key Insights & Recommendations</h1>
+                <div className="group relative">
+                  <svg
+                    className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-label="More information"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div className="absolute right-0 mt-2 w-64 p-2 text-xs text-gray-700 bg-white rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                    Generated by advanced AI models to highlight risks, trends, and next steps for improving attendance outcomes.
+                  </div>
+                </div>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Monitor alerts and notifications
               </p>
