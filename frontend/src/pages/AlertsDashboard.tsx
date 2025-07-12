@@ -11,6 +11,11 @@ import {
   Download,
   ChevronUp,
   ChevronDown,
+  Users,
+  AlertTriangle,
+  CheckCircle2,
+  BarChart2,
+  ArrowUpCircle
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axiosInstance, { setAuthToken } from "@/lib/axios";
@@ -42,6 +47,8 @@ interface SummaryStatistics {
   totalStudents: number;
   below85Students: number;
   tier1Students: number;
+  tier2Students: number;
+  tier3Students: number;
   tier4Students: number;
 }
 
@@ -53,6 +60,17 @@ interface InsightItem {
 interface RecommendationItem {
   text?: string;
   recommendation?: string;
+}
+
+interface PrioritySchool {
+  schoolName: string;
+  district: string;
+  riskPercentage: number;
+}
+
+interface GradeRisk {
+  grade: string;
+  riskPercentage: number;
 }
 
 interface AnalysisData {
@@ -260,9 +278,21 @@ const extractErrorMessage = (error: ApiError): string => {
 
 
 const formatTextWithHighlights = (text: string): string => {
-  return text.replace(/(\d+(?:\.\d+)?(?:-\d+(?:\.\d+)?)?%)/g, '<strong class="text-teal-700">$1</strong>');
+  // First, handle the entire line by making the first part bold
+  // This will make everything before the first colon bold, if a colon exists
+  let formattedText = text.replace(/^([^:]+)(:)/, '<strong class="font-semibold text-gray-900">$1</strong>:');
+  
+  // If no colon was found, try to make the first few words bold
+  if (formattedText === text) {
+    // This regex matches the first 2-5 words at the start of the string
+    formattedText = text.replace(/^(\w+(?:\s+\w+){0,4}\b)/, '<strong class="font-semibold text-gray-900">$1</strong>');
+  }
+  
+  // Still highlight percentages in teal
+  formattedText = formattedText.replace(/(\d+(?:\.\d+)?(?:-\d+(?:\.\d+)?)?%)/g, '<strong class="text-teal-700">$1</strong>');
+  
+  return formattedText;
 };
-
 
 const getTextFromItem = (
   item: string | InsightItem | RecommendationItem
@@ -275,6 +305,56 @@ const getTextFromItem = (
   return "No content available";
 };
 
+const extractPrioritySchools = (recommendations: Array<string | RecommendationItem>): PrioritySchool[] => {
+  const schools: PrioritySchool[] = [];
+  const seen = new Set<string>(); 
+
+  recommendations.forEach(item => {
+    const text = getTextFromItem(item);
+    const match = text.match(/to\s+([^,]+?)\s+in\s+([^,]+?)\s+with\s+([\d.]+)%/i);
+    if (match) {
+      const [, schoolName, district, risk] = match;
+      const key = `${schoolName}-${district}`.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        schools.push({
+          schoolName: schoolName.trim(),
+          district: district.trim(),
+          riskPercentage: parseFloat(risk)
+        });
+      }
+    }
+  });
+
+  return schools.sort((a, b) => b.riskPercentage - a.riskPercentage);
+};
+
+const extractGradeLevelRisks = (recommendations: Array<string | RecommendationItem>): GradeRisk[] => {
+  const grades: GradeRisk[] = [];
+  const seen = new Set<string>(); 
+
+  recommendations.forEach(item => {
+    const text = getTextFromItem(item);
+    const match = text.match(/Grade\s+(\d+)[^\d]+?([\d.]+)%/i);
+    if (match) {
+      const [, grade, risk] = match;
+      const gradeKey = `grade-${grade}`;
+      if (!seen.has(gradeKey)) {
+        seen.add(gradeKey);
+        grades.push({
+          grade: `Grade ${grade}`,
+          riskPercentage: parseFloat(risk)
+        });
+      }
+    }
+  });
+
+  return grades.sort((a, b) => {
+    const gradeA = parseInt(a.grade.replace('Grade ', ''));
+    const gradeB = parseInt(b.grade.replace('Grade ', ''));
+    return gradeA - gradeB;
+  });
+};
 
 const createOptionKey = (
   prefix: string,
@@ -585,7 +665,11 @@ const fetchAnalysisData = useCallback(async (): Promise<
         payload: { gradeOptions: [] },
       });
   
-      const searchCriteria = createSearchCriteria(state.filters)
+      const searchCriteria = {
+        districtCode: "",
+        gradeCode: "",
+        schoolCode: "",
+      };
   
       const [analysisData, schoolsData] = await Promise.all([
         alertsService.getPredictionInsights(searchCriteria),
@@ -745,6 +829,7 @@ const fetchAnalysisData = useCallback(async (): Promise<
     </div>
   );
 
+
   
   const FilterSection: React.FC = () => (
     <div className="w-full lg:w-64 p-4 bg-white shadow rounded-md h-fit sticky top-4">
@@ -885,65 +970,127 @@ const fetchAnalysisData = useCallback(async (): Promise<
   );
 
  
+  /**
+   * Summary statistics cards
+   */
   const SummaryCards: React.FC = () => {
     if (!state.analysisData) return null;
-
     const cardConfigs = [
       {
         title: "Total Students",
         value: state.analysisData.summaryStatistics.totalStudents,
         reportType: "summary",
-        icon: null,
+        icon: <Users className="h-5 w-5 text-blue-600" />,
+        bgColor: "from-blue-50 to-blue-100",
+        borderColor: "border-blue-200",
+        textColor: "text-blue-800"
       },
       {
-        title: "Below 85% Attendance",
-        value: state.analysisData.summaryStatistics.below85Students,
-        reportType: "below_85",
-        icon: <AlertCircle size={14} className="text-[#03787c]" />,
-      },
-      {
-        title: "Tier 1 Students (≥95%)",
-        value: state.analysisData.summaryStatistics.tier1Students,
+        title: "Tier 1 (≥95%)",
+        value: state.analysisData.summaryStatistics.tier1Students || 0,
         reportType: "tier1",
-        icon: null,
+        icon: <CheckCircle2 className="h-5 w-5 text-green-600" />,
+        bgColor: "from-green-50 to-green-100",
+        borderColor: "border-green-200",
+        textColor: "text-green-800"
       },
       {
-        title: "Tier 4 Students (<80%)",
-        value: state.analysisData.summaryStatistics.tier4Students,
-        reportType: "tier4",
-        icon: null,
+        title: "Tier 2 (90-95%)",
+        value: state.analysisData.summaryStatistics.tier2Students || 0,
+        reportType: "tier2",
+        icon: <ArrowUpCircle className="h-5 w-5 text-blue-600" />,
+        bgColor: "from-blue-50 to-blue-100",
+        borderColor: "border-blue-200",
+        textColor: "text-blue-800"
       },
+      {
+        title: "Tier 3 (80-90%)",
+        value: state.analysisData.summaryStatistics.tier3Students || 0,
+        reportType: "tier3",
+        icon: <AlertTriangle className="h-5 w-5 text-amber-600" />,
+        bgColor: "from-amber-50 to-amber-100",
+        borderColor: "border-amber-200",
+        textColor: "text-amber-800"
+      },
+      {
+        title: "Tier 4 (<80%)",
+        value: state.analysisData.summaryStatistics.tier4Students || 0,
+        reportType: "tier4",
+        icon: <AlertCircle className="h-5 w-5 text-red-600" />,
+        bgColor: "from-red-50 to-red-100",
+        borderColor: "border-red-200",
+        textColor: "text-red-800"
+      },
+
     ];
 
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {cardConfigs.map((config, index) => (
-          <Card key={index} className="bg-white border border-[#C0D5DE]">
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-base flex items-center gap-1">
-                {config.icon}
-                {config.title}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pb-3 pt-1 flex justify-between items-center">
-              <span className="text-2xl font-semibold">{config.value}</span>
-              <button
-                onClick={() => downloadReport(config.reportType)}
-                className="text-xs bg-[#03787c] text-white p-1 rounded flex items-center gap-1 hover:bg-[#026266]"
-                title={`Download ${config.title} Report`}
-                aria-label={`Download ${config.title} report`}
-              >
-                <Download size={12} />
-                Export
-              </button>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="w-full overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-1 pb-1 -mx-1">
+          {cardConfigs.map((config, index) => (
+            <Card 
+              key={index} 
+              className={`
+                group relative overflow-hidden 
+                border ${config.borderColor} 
+                bg-gradient-to-br ${config.bgColor}
+                hover:shadow-lg hover:-translate-y-0.5
+                transition-all duration-200 ease-in-out
+                h-full flex flex-col
+              `}
+            >
+              <div className="absolute inset-0 bg-white/5 group-hover:bg-white/10 transition-colors duration-300"></div>
+              <CardHeader className="p-4 pb-2 relative z-10">
+                <div className="flex items-center justify-between">
+                  <CardTitle className={`text-sm font-medium ${config.textColor} tracking-tight`}>
+                    {config.title}
+                  </CardTitle>
+                  <div className={`p-1.5 rounded-lg bg-white/80 backdrop-blur-sm shadow-sm group-hover:scale-110 transition-transform duration-200`}>
+                    {config.icon}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 pt-0 relative z-10 mt-auto">
+                <div className="flex items-end justify-between">
+                  <div className="text-2xl font-bold tracking-tight">
+                    {typeof config.value === 'number' 
+                      ? config.value.toLocaleString() 
+                      : config.value}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownloadReport(config.reportType);
+                    }}
+                    className={`
+                      p-1.5 rounded-md 
+                      text-gray-400 hover:text-gray-700 
+                      hover:bg-white/50 
+                      transition-all duration-200
+                      backdrop-blur-sm
+                      group-hover:opacity-100 opacity-70
+                    `}
+                    title={`Download ${config.title} Report`}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {config.title.includes("Avg") && (
+                  <div className="mt-1.5 h-1.5 w-full bg-white/30 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${config.bgColor.replace('to-', 'bg-').split(' ')[0]} rounded-full`}
+                      style={{ width: `${state.analysisData?.summaryStatistics.averageAttendanceRate}%` }}
+                    ></div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   };
 
-  
   const InsightsAndRecommendations: React.FC = () => {
     if (!state.analysisData) return null;
 
@@ -952,13 +1099,36 @@ const fetchAnalysisData = useCallback(async (): Promise<
       icon: string;
       items: Array<string | InsightItem | RecommendationItem>;
       emptyMessage: string;
-    }> = ({ title, icon, items, emptyMessage }) => (
+      tooltip?: string;
+    }> = ({ title, icon, items, emptyMessage, tooltip }) => (
       <div className="flex-1 flex flex-col bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
-        <div className="bg-[#03787c] text-white px-4 h-11 flex items-center rounded-t-lg">
-          <span className="text-sm mr-2" role="img" aria-label={title}>
-            {icon}
-          </span>
-          <h3 className="font-semibold text-sm">{title}</h3>
+        <div className="bg-[#03787c] text-white px-4 h-11 flex items-center justify-between rounded-t-lg">
+          <div className="flex items-center">
+            <span className="text-sm mr-2" role="img" aria-label={title}>
+              {icon}
+            </span>
+            <h3 className="font-semibold text-sm">{title}</h3>
+          </div>
+          {tooltip && (
+            <div className="group relative">
+              <svg 
+                className="w-4 h-4 text-white/80 hover:text-white cursor-help" 
+                fill="currentColor" 
+                viewBox="0 0 20 20" 
+                xmlns="http://www.w3.org/2000/svg"
+                aria-label="More information"
+              >
+                <path 
+                  fillRule="evenodd" 
+                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" 
+                  clipRule="evenodd"
+                />
+              </svg>
+              <div className="absolute right-0 mt-2 w-64 p-2 text-xs text-gray-700 bg-white rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                {tooltip}
+              </div>
+            </div>
+          )}
         </div>
         <div className="overflow-y-auto max-h-[360px] p-3 bg-white rounded-b-lg text-xs">
           {items?.length > 0 ? (
@@ -996,12 +1166,13 @@ const fetchAnalysisData = useCallback(async (): Promise<
     );
 
     return (
-      <div className="w-full flex flex-col md:flex-row gap-5 mt-4">
+      <div className="w-full flex flex-col gap-5 mt-4">
         <InsightPanel
-          title="AI DRIVEN Key Insights"
+          title="AI-Driven Attendance Insights & Recommendations"
           icon="ℹ️"
           items={state.analysisData.keyInsights}
           emptyMessage="No insights available"
+          tooltip="Generated by advanced AI models to highlight risks, trends, and next steps for improving attendance outcomes."
         />
         <InsightPanel
           title="AI Recommendations"
@@ -1009,6 +1180,9 @@ const fetchAnalysisData = useCallback(async (): Promise<
           items={state.analysisData.recommendations}
           emptyMessage="No recommendations available"
         />
+        
+        {/* New Tables Section */}
+
       </div>
     );
   };
@@ -1121,14 +1295,35 @@ const fetchAnalysisData = useCallback(async (): Promise<
     <div className="min-h-screen bg-gray-50/50 relative">
       {state.loading.isDownloadingReport && <ReportDownloadingModal />}
 
-      <div className="container mx-auto px-4 py-4 max-w-full">
+      <div className="container mx-auto p-4 md:p-6 max-w-7xl">
         {/* Header Section */}
         <div className="mb-4">
           <div className="flex justify-between items-center flex-wrap gap-2">
             <div>
-              <h1 className="text-2xl font-bold">Alerts Dashboard</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">AI-Driven Attendance Insights & Recommendations</h1>
+                <div className="group relative">
+                  <svg
+                    className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-label="More information"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div className="absolute right-0 mt-2 w-64 p-2 text-xs text-gray-700 bg-white rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                    Generated by advanced AI models to highlight risks, trends, and next steps for improving attendance outcomes.
+                  </div>
+                </div>
+              </div>
               <p className="text-sm text-muted-foreground">
-                Monitor alerts and notifications
+                   Generated by advanced AI models to highlight risks, trends, and next steps for improving attendance outcomes
               </p>
             </div>
             <div className="flex items-center gap-2">
