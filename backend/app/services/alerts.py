@@ -1,15 +1,18 @@
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 import traceback
 import io
 import time
+import numpy as np
 
 from backend.app.services.filter_service import FilterService
 from backend.classes.SummaryStatistics import SummaryStatistics
 from backend.classes.AnalysisResponse import AnalysisResponse
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
 from backend.classes.FilterCriteria import FilterCriteria
 from backend.classes.FilterOptions import FilterOptions
 from backend.classes.GradeResponse import GradeResponse
@@ -17,11 +20,96 @@ from backend.classes.SchoolResponse import SchoolResponse
 from backend.app.config import get_current_year
 from backend.app.data_store import data_store
 from backend.app.utils.logger import logger
-from backend.app.utils.alerts_utils import al_utils
 from backend.app.services.generation_service import GenerationService
 from backend.app.services.report_service import ReportService
 
+# Constants for tier and risk level classification
+TIER_BINS = [0, 80, 90, 95, 100]
+TIER_LABELS = ['Tier 4', 'Tier 3', 'Tier 2', 'Tier 1']
+RISK_LEVEL_BINS = [0, 80, 90, 95, 100]
+RISK_LEVEL_LABELS = ['Critical', 'High', 'Medium', 'Low']
+
 CURRENT_SCHOOL_YEAR = get_current_year()
+
+def _generate_alerts_notifications(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Generate alerts notifications based on attendance predictions.
+    
+    Args:
+        df: DataFrame containing student attendance data
+        
+    Returns:
+        Dictionary containing alert notifications grouped by district, school, and grade
+    """
+    # Use the main Predictions column for all calculations
+    if 'Predictions' not in df.columns:
+        logger.warning("No 'Predictions' column found in the DataFrame")
+        return {
+            "totalBelow60": 0,
+            "byDistrict": [],
+            "bySchool": [],
+            "byGrade": []
+        }
+    
+    # Create a mask for students below 60% attendance and ensure it's a numpy array
+    mask = (df['Predictions'] < 0.6).values
+    total_below_60 = int(mask.sum().item() if hasattr(mask.sum(), 'item') else int(mask.sum()))
+    
+    # Helper function to safely group and count
+    def safe_group_count(data, group_col, count_col='count'):
+        if group_col not in data.columns:
+            logger.warning(f"Column '{group_col}' not found for grouping")
+            return []
+            
+        try:
+            # Convert numpy types to Python native types and handle NaN/None
+            counts = data[mask].groupby(group_col).size().reset_index(name=count_col)
+            
+            result = []
+            for _, row in counts.iterrows():
+                # Convert numpy types to Python native types
+                group_value = row[group_col]
+                if hasattr(group_value, 'item'):
+                    group_value = group_value.item()
+                
+                count_value = row[count_col]
+                if hasattr(count_value, 'item'):
+                    count_value = int(count_value.item())
+                else:
+                    count_value = int(count_value)
+                
+                # Handle potential NaN/None values
+                if pd.isna(group_value):
+                    group_value = None
+                    
+                result.append({
+                    group_col.lower().replace('_name', '').replace('student_', ''): group_value,
+                    'count': count_value
+                })
+                
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error grouping by {group_col}: {str(e)}\n{traceback.format_exc()}")
+            return []
+    
+    # Group by district, school, and grade
+    by_district = safe_group_count(df, 'DISTRICT_NAME')
+    by_school = safe_group_count(df, 'SCHOOL_NAME')
+    by_grade = safe_group_count(df, 'STUDENT_GRADE_LEVEL', 'grade')
+    
+    # Log the results for debugging
+    logger.info(f"Generated alerts: {total_below_60} students below 60% attendance")
+    logger.info(f"Districts with alerts: {len(by_district)}")
+    logger.info(f"Schools with alerts: {len(by_school)}")
+    logger.info(f"Grades with alerts: {len(by_grade)}")
+    
+    return {
+        "totalBelow60": total_below_60,
+        "byDistrict": by_district,
+        "bySchool": by_school,
+        "byGrade": by_grade
+    }
 
 
 def get_analysis(search_criteria: FilterCriteria):
@@ -79,22 +167,45 @@ def get_analysis(search_criteria: FilterCriteria):
         
         total_students = len(df)
         
+        # Get attendance data
         if 'Predictions' in df.columns:
             attendance_series = df['Predictions'] * 100
         elif 'Predicted_Attendance' in df.columns:
             attendance_series = df['Predicted_Attendance']
         else:
             raise HTTPException(status_code=500, detail='No attendance data available in the dataset')
-            
-        tier_series = attendance_series.apply(al_utils.assign_tiers)
-        risk_level_series = attendance_series.apply(al_utils.assign_risk_level)
-        df = df.assign(TIER=tier_series, RISK_LEVEL=risk_level_series)
+        
+        # Vectorized operations for tier and risk level assignment
+        df['TIER'] = pd.cut(
+            attendance_series,
+            bins=TIER_BINS,
+            labels=TIER_LABELS,
+            include_lowest=True,
+            right=False
+        )
+        
+        # Generate alerts notifications
+        alerts_notifications = _generate_alerts_notifications(df)
+        
+        df['RISK_LEVEL'] = pd.cut(
+            attendance_series,
+            bins=RISK_LEVEL_BINS,
+            labels=RISK_LEVEL_LABELS,
+            include_lowest=True,
+            right=False
+        )
+        
+        # Calculate metrics
+        tier_counts = df['TIER'].value_counts()
+        tier4 = int(tier_counts.get('Tier 4', 0))
+        tier3 = int(tier_counts.get('Tier 3', 0))
+        tier2 = int(tier_counts.get('Tier 2', 0))
+        tier1 = int(tier_counts.get('Tier 1', 0))
         
         below_85_mask = attendance_series < 85
-        critical_risk_mask = risk_level_series == 'Critical'
-        tier_counts = tier_series.value_counts()
-        tier4, tier3, tier2, tier1 = int(tier_counts.get('Tier 4', 0)), int(tier_counts.get('Tier 3', 0)), int(tier_counts.get('Tier 2', 0)), int(tier_counts.get('Tier 1', 0))
-        below_85_students, critical_risk_students = int(below_85_mask.sum()), int(critical_risk_mask.sum())
+        critical_risk_mask = df['RISK_LEVEL'] == 'Critical'
+        below_85_students = int(below_85_mask.sum())
+        critical_risk_students = int(critical_risk_mask.sum())
         
         school_prediction = round(df['Predictions_School'].mean() * 100, 1) if 'Predictions_School' in df.columns and not df['Predictions_School'].isna().all() else None
         grade_prediction = round(df['Predictions_Grade'].mean() * 100, 1) if 'Predictions_Grade' in df.columns and not df['Predictions_Grade'].isna().all() else None
@@ -112,7 +223,18 @@ def get_analysis(search_criteria: FilterCriteria):
         insights = GenerationService.generate_insights(df)
         recommendations = GenerationService.generate_recommendations(df)
         logger.info(f'AI analysis completed in {time.time() - start_time:.4f} seconds')
-        return AnalysisResponse(summaryStatistics=summary, keyInsights=insights, recommendations=recommendations)
+        @dataclass
+        class AnalysisResponse:
+            summaryStatistics: SummaryStatistics
+            keyInsights: List[str]
+            recommendations: List[str]
+            alertsNotifications: Optional[Dict[str, Any]] = None
+        return AnalysisResponse(
+            summaryStatistics=summary, 
+            keyInsights=insights, 
+            recommendations=recommendations,
+            alertsNotifications=alerts_notifications
+        )
     except Exception as e:
         logger.error(f'Error in get_analysis: {str(e)}')
         raise HTTPException(status_code=500, detail=str(e))
@@ -242,7 +364,7 @@ def download_report(criteria: FilterCriteria, report_type: str):
                 raise HTTPException(status_code=404, detail='No students found with attendance below 85% for the selected filters.')
             report_df = report_df.sort_values('Predicted_Attendance')
             report_df = ReportService.generate_detailed_report(report_df)
-            filename = f"attendance_below_85_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            filename = f"CAR_REPORT_Chronic_Absenteeism_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
             
         elif report_type == 'tier1':
             report_df = df[df['TIER'] == 'Tier 1'].copy()
