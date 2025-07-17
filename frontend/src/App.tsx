@@ -30,11 +30,13 @@ const App = () => (
             <Route path="/ai_attendance_dashboard" element={<AttendanceDash />}/>
             <Route path="/ai_attendance_dashboard/predictions" element={<Prediction />} />
             <Route path="/ai_attendance_dashboard/alerts" element={<AlertsDashboard />} />
+            <Route path="/alerts" element={<AlertsDashboard />} />
           </Routes>
         </Router>
       </TooltipProvider>
     </AuthProvider>
+
   </QueryClientProvider>
 );
- 
+
 export default App;

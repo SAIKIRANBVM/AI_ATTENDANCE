@@ -3,7 +3,7 @@ import axios from "axios";
 const AUTH_TOKEN_KEY = "auth_token";
 const axiosInstance = axios.create({
   baseURL: "https://best.bvm.ngrok.app/aip_api/api/FastAPIService/",
-  // baseURL: "https://localhost:8000/api/predictions",
+  // baseURL: "https://localhost:8000/api/alerts",
   headers: {
     "Content-Type": "application/json",
   },
