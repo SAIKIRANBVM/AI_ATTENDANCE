@@ -17,6 +17,7 @@ from backend.classes.FilterCriteria import FilterCriteria
 from backend.classes.FilterOptions import FilterOptions
 from backend.classes.GradeResponse import GradeResponse
 from backend.classes.SchoolResponse import SchoolResponse
+from backend.classes.GradeRiskResponse import GradeRiskResponse, GradeRiskItem
 from backend.app.config import get_current_year
 from backend.app.data_store import data_store
 from backend.app.utils.logger import logger
@@ -540,3 +541,118 @@ def get_grades(district: str | None = None, school: str | None = None) -> List[G
     except Exception as e:
         logger.error(f'Error getting grades: {str(e)}', exc_info=True)
         raise HTTPException(status_code=500, detail=f'Failed to retrieve grades: {str(e)}')
+
+
+def get_grade_risk_data(district: str | None = None, school: str | None = None) -> GradeRiskResponse:
+    """
+    Get grade-level risk data for the specified district and/or school.
+    
+    Args:
+        district: Optional district code to filter by
+        school: Optional school code to filter by
+        
+    Returns:
+        GradeRiskResponse containing risk data by grade level
+    """
+    logger.info(f"Getting grade risk data for district: {district}, school: {school}")
+    
+    if not data_store.is_ready:
+        raise HTTPException(status_code=503, detail='Data is still being loaded. Please try again shortly.')
+        
+    try:
+        if data_store.df is None:
+            raise ValueError("No data available")
+            
+        df = data_store.df.copy()
+        
+        # Apply filters
+        if district:
+            district = str(district).strip()
+            df = df[df['DISTRICT_CODE'].astype(str).str.strip() == district]
+            
+        if school:
+            school = str(school).strip()
+            location_id = school.split('-', 1)[1].strip() if '-' in school else school
+            df = df[df['LOCATION_ID'].astype(str).str.strip() == location_id]
+        
+        if df.empty:
+            return GradeRiskResponse()
+            
+        # Ensure we have the required columns
+        grade_col = 'STUDENT_GRADE_LEVEL'
+        if grade_col not in df.columns:
+            raise ValueError(f"Required column '{grade_col}' not found in data")
+        
+        # Determine which prediction column to use (in order of preference)
+        prediction_col = None
+        for col in ['Predictions', 'Predictions_Grade', 'Predictions_School', 'Predictions_District']:
+            if col in df.columns:
+                prediction_col = col
+                logger.info(f"Using prediction column: {prediction_col}")
+                break
+                
+        if prediction_col is None:
+            logger.warning("No prediction columns found, using actual attendance data")
+            df['RISK_PERCENTAGE'] = (100 - (df['Total_Days_Present'] / df['Total_Days_Enrolled'] * 100).clip(0, 100)).round(2)
+        else:
+            # Convert prediction to risk percentage (assuming predictions are 0-1 probabilities)
+            df['RISK_PERCENTAGE'] = (100 - (df[prediction_col] * 100).clip(0, 100)).round(2)
+        
+        # Group by grade and calculate statistics
+        grade_groups = df.groupby(grade_col).agg({
+            'RISK_PERCENTAGE': ['mean', 'count'],
+            'STUDENT_ID': 'nunique'
+        }).reset_index()
+        
+        # Flatten column names
+        grade_groups.columns = ['_'.join(col).strip('_') for col in grade_groups.columns.values]
+        
+        # Calculate overall statistics
+        total_students = grade_groups['STUDENT_ID_nunique'].sum()
+        weighted_avg_risk = (grade_groups['RISK_PERCENTAGE_mean'] * grade_groups['STUDENT_ID_nunique']).sum() / total_students if total_students > 0 else 0
+        
+        # Format the response
+        grade_items = []
+        for _, row in grade_groups.iterrows():
+            grade = str(row[f'{grade_col}']).strip()
+            # Normalize grade for display
+            if grade.upper() in ['PK', 'P', 'PRE-K', 'PREK', 'PRE-KINDERGARTEN', '-1']:
+                grade_display = 'PK'
+            elif grade.upper() in ['K', 'KG', 'KINDERGARTEN', '0']:
+                grade_display = 'K'
+            else:
+                # Try to convert to integer for numeric grades
+                try:
+                    grade_num = int(float(grade))
+                    grade_display = str(grade_num)
+                except (ValueError, TypeError):
+                    grade_display = grade
+            
+            grade_items.append(GradeRiskItem(
+                grade=grade_display,
+                risk_percentage=round(float(row['RISK_PERCENTAGE_mean']), 2),
+                student_count=int(row['STUDENT_ID_nunique'])
+            ))
+        
+        # Sort grades: PK, K, then numeric grades
+        def grade_sort_key(item: GradeRiskItem):
+            if item.grade.upper() == 'PK':
+                return (-1, 'PK')
+            if item.grade.upper() == 'K':
+                return (0, 'K')
+            try:
+                return (int(item.grade), item.grade)
+            except (ValueError, TypeError):
+                return (float('inf'), item.grade)
+                
+        grade_items.sort(key=grade_sort_key)
+        
+        return GradeRiskResponse(
+            grades=grade_items,
+            total_students=total_students,
+            average_risk=round(weighted_avg_risk, 2)
+        )
+        
+    except Exception as e:
+        logger.error(f'Error getting grade risk data: {str(e)}', exc_info=True)
+        raise HTTPException(status_code=500, detail=f'Failed to retrieve grade risk data: {str(e)}')

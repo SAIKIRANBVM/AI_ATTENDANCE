@@ -10,6 +10,7 @@ from backend.classes.FilterCriteria import FilterCriteria
 from backend.classes.AnalysisResponse import AnalysisResponse
 from backend.classes.FilterOptions import FilterOptions
 from backend.classes.DataRequest import DataRequest
+from backend.classes.GradeRiskResponse import GradeRiskResponse
 from backend.app.services import alerts
 
 
@@ -62,6 +63,22 @@ def prediction_insights(criteria: FilterCriteria):
 def filter_options():
     ready()
     return alerts.get_filter_options()
+
+
+@app.get("/api/alerts/grade-risks", response_model=GradeRiskResponse)
+def get_grade_risks(district: str | None = None, school: str | None = None):
+    """
+    Get grade-level risk data for the specified district and/or school.
+    
+    Args:
+        district: Optional district code to filter by
+        school: Optional school code to filter by
+        
+    Returns:
+        GradeRiskResponse containing risk data by grade level
+    """
+    ready()
+    return alerts.get_grade_risk_data(district, school)
 
 
 

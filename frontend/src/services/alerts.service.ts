@@ -292,13 +292,6 @@ export interface SummaryStatistics {
   tier2Students: number;
   tier3Students: number;
   tier4Students: number;
-  below85Percentage: number;
-  tier1Percentage: number;
-  tier2Percentage: number;
-  tier3Percentage: number;
-  tier4Percentage: number;
-  schoolPrediction?: number;
-  gradePrediction?: number;
 }
 
 export interface InsightItem {
@@ -340,6 +333,18 @@ export interface SchoolFilterParams {
 export interface GradeFilterParams {
   school: string;
   district: string;
+}
+
+export interface GradeRiskItem {
+  grade: string;
+  risk_percentage: number;
+  student_count: number;
+}
+
+export interface GradeRiskResponse {
+  grades: GradeRiskItem[];
+  total_students: number;
+  average_risk: number;
 }
 
 export interface ApiErrorResponse {
@@ -487,6 +492,23 @@ class AlertsService {
     return this.downloadReport("tier4", criteria);
   }
 
+  async getGradeRisks(district?: string, school?: string): Promise<GradeRiskResponse> {
+    try {
+      const params = new URLSearchParams();
+      if (district) params.append('district', district);
+      if (school) params.append('school', school);
+      
+      const response = await axiosInstance.get<GradeRiskResponse>(
+        `/api/alerts/grade-risks?${params.toString()}` // Changed URL
+      );
+      
+      return response.data;
+    } catch (error) {
+      const apiError = error as ApiError;
+      console.error('Error fetching grade risks:', apiError);
+      throw this.handleError(apiError);
+    }
+  }
 
   private handleError(error: ApiError): Error {
     let message = "An unexpected error occurred";
