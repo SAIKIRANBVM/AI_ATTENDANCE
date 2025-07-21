@@ -11,6 +11,7 @@ from backend.classes.AnalysisResponse import AnalysisResponse
 from backend.classes.FilterOptions import FilterOptions
 from backend.classes.DataRequest import DataRequest
 from backend.classes.GradeRiskResponse import GradeRiskResponse
+from backend.classes.SchoolRiskResponse import SchoolRiskResponse, SchoolRiskItem
 from backend.app.services import alerts
 
 
@@ -79,6 +80,21 @@ def get_grade_risks(district: str | None = None, school: str | None = None):
     """
     ready()
     return alerts.get_grade_risk_data(district, school)
+
+
+@app.get("/api/alerts/school-risks", response_model=SchoolRiskResponse)
+def get_school_risks(district: str | None = None):
+    """
+    Get school-level risk data for the specified district.
+    
+    Args:
+        district: Optional district code to filter by
+        
+    Returns:
+        SchoolRiskResponse containing risk data by school
+    """
+    ready()
+    return alerts.get_school_risk_data(district)
 
 
 

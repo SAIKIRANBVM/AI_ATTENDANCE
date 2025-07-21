@@ -8,6 +8,8 @@ import io
 import time
 import numpy as np
 
+from backend.app.utils.alerts_utils import al_utils
+
 from backend.app.services.filter_service import FilterService
 from backend.classes.SummaryStatistics import SummaryStatistics
 from backend.classes.AnalysisResponse import AnalysisResponse
@@ -17,7 +19,8 @@ from backend.classes.FilterCriteria import FilterCriteria
 from backend.classes.FilterOptions import FilterOptions
 from backend.classes.GradeResponse import GradeResponse
 from backend.classes.SchoolResponse import SchoolResponse
-from backend.classes.GradeRiskResponse import GradeRiskResponse, GradeRiskItem
+from backend.classes.GradeRiskResponse import GradeRiskResponse, GradeRiskItem, RiskLevel as GradeRiskLevel
+from backend.classes.SchoolRiskResponse import SchoolRiskResponse, SchoolRiskItem, RiskLevel as SchoolRiskLevel
 from backend.app.config import get_current_year
 from backend.app.data_store import data_store
 from backend.app.utils.logger import logger
@@ -576,7 +579,13 @@ def get_grade_risk_data(district: str | None = None, school: str | None = None) 
             df = df[df['LOCATION_ID'].astype(str).str.strip() == location_id]
         
         if df.empty:
-            return GradeRiskResponse()
+            return GradeRiskResponse(
+                grades=[],
+                total_students=0,
+                average_risk=0.0,
+                average_risk_level=GradeRiskItem.calculate_risk_level(0.0),
+                risk_distribution={level: 0 for level in GradeRiskLevel}
+            )
             
         # Ensure we have the required columns
         grade_col = 'STUDENT_GRADE_LEVEL'
@@ -611,10 +620,15 @@ def get_grade_risk_data(district: str | None = None, school: str | None = None) 
         total_students = grade_groups['STUDENT_ID_nunique'].sum()
         weighted_avg_risk = (grade_groups['RISK_PERCENTAGE_mean'] * grade_groups['STUDENT_ID_nunique']).sum() / total_students if total_students > 0 else 0
         
-        # Format the response
+        # Format the response with risk levels
         grade_items = []
+        risk_distribution = {level: 0 for level in GradeRiskLevel}
+        
         for _, row in grade_groups.iterrows():
             grade = str(row[f'{grade_col}']).strip()
+            risk_percent = round(float(row['RISK_PERCENTAGE_mean']), 2)
+            student_count = int(row['STUDENT_ID_nunique'])
+            
             # Normalize grade for display
             if grade.upper() in ['PK', 'P', 'PRE-K', 'PREK', 'PRE-KINDERGARTEN', '-1']:
                 grade_display = 'PK'
@@ -628,11 +642,18 @@ def get_grade_risk_data(district: str | None = None, school: str | None = None) 
                 except (ValueError, TypeError):
                     grade_display = grade
             
+            # Calculate risk level
+            risk_level = GradeRiskItem.calculate_risk_level(risk_percent)
+            
             grade_items.append(GradeRiskItem(
                 grade=grade_display,
-                risk_percentage=round(float(row['RISK_PERCENTAGE_mean']), 2),
-                student_count=int(row['STUDENT_ID_nunique'])
+                risk_percentage=risk_percent,
+                student_count=student_count,
+                risk_level=risk_level
             ))
+            
+            # Update risk distribution
+            risk_distribution[risk_level] += 1
         
         # Sort grades: PK, K, then numeric grades
         def grade_sort_key(item: GradeRiskItem):
@@ -647,12 +668,117 @@ def get_grade_risk_data(district: str | None = None, school: str | None = None) 
                 
         grade_items.sort(key=grade_sort_key)
         
+        # Calculate overall average risk level
+        avg_risk_rounded = round(weighted_avg_risk, 2)
+        avg_risk_level = GradeRiskItem.calculate_risk_level(avg_risk_rounded)
+        
         return GradeRiskResponse(
             grades=grade_items,
             total_students=total_students,
-            average_risk=round(weighted_avg_risk, 2)
+            average_risk=avg_risk_rounded,
+            average_risk_level=avg_risk_level,
+            risk_distribution=risk_distribution
         )
         
     except Exception as e:
         logger.error(f'Error getting grade risk data: {str(e)}', exc_info=True)
         raise HTTPException(status_code=500, detail=f'Failed to retrieve grade risk data: {str(e)}')
+
+
+def get_school_risk_data(district: str | None = None) -> SchoolRiskResponse:
+    """
+    Get school-level risk data for the specified district.
+    
+    Args:
+        district: Optional district code to filter by
+        
+    Returns:
+        SchoolRiskResponse containing risk data by school
+    """
+    logger.info(f"Getting school risk data for district: {district}")
+    
+    if not data_store.is_ready:
+        raise HTTPException(status_code=503, detail='Data is still being loaded. Please try again shortly.')
+        
+    try:
+        if data_store.df is None:
+            raise ValueError("No data available")
+            
+        df = data_store.df.copy()
+        
+        # Apply district filter if provided
+        if district:
+            district = str(district).strip()
+            df = df[df['DISTRICT_CODE'].astype(str).str.strip() == district]
+        
+        if df.empty:
+            return SchoolRiskResponse(
+                schools=[],
+                total_students=0,
+                average_risk=0.0,
+                average_risk_level=SchoolRiskItem.calculate_risk_level(0.0),
+                risk_distribution={level: 0 for level in SchoolRiskLevel}
+            )
+            
+        # Determine which prediction column to use (in order of preference)
+        prediction_col = None
+        for col in ['Predictions', 'Predictions_Grade', 'Predictions_School', 'Predictions_District']:
+            if col in df.columns:
+                prediction_col = col
+                logger.info(f"Using prediction column: {prediction_col}")
+                break
+                
+        if prediction_col is None:
+            logger.warning("No prediction columns found, using actual attendance data")
+            df['RISK_PERCENTAGE'] = (100 - (df['Total_Days_Present'] / df['Total_Days_Enrolled'] * 100).clip(0, 100)).round(2)
+        else:
+            # Convert prediction to risk percentage (assuming predictions are 0-1 probabilities)
+            df['RISK_PERCENTAGE'] = (100 - (df[prediction_col] * 100).clip(0, 100)).round(2)
+        
+        # Group by school and calculate statistics
+        school_groups = df.groupby(['LOCATION_ID', 'SCHOOL_NAME']).agg({
+            'RISK_PERCENTAGE': 'mean',
+            'STUDENT_ID': 'nunique'
+        }).reset_index()
+        
+        # Calculate overall statistics
+        total_students = school_groups['STUDENT_ID'].sum()
+        weighted_avg_risk = (school_groups['RISK_PERCENTAGE'] * school_groups['STUDENT_ID']).sum() / total_students if total_students > 0 else 0
+        
+        # Format the response with risk levels
+        school_items = []
+        risk_distribution = {level: 0 for level in SchoolRiskLevel}
+        
+        for _, row in school_groups.iterrows():
+            risk_percent = round(float(row['RISK_PERCENTAGE']), 2)
+            risk_level = SchoolRiskItem.calculate_risk_level(risk_percent)
+            
+            school_items.append(SchoolRiskItem(
+                school_id=str(row['LOCATION_ID']),
+                school_name=row['SCHOOL_NAME'],
+                risk_percentage=risk_percent,
+                student_count=int(row['STUDENT_ID']),
+                risk_level=risk_level
+            ))
+            
+            # Update risk distribution
+            risk_distribution[risk_level] += 1
+        
+        # Sort schools by risk percentage (highest risk first)
+        school_items.sort(key=lambda x: x.risk_percentage, reverse=True)
+        
+        # Calculate overall average risk level
+        avg_risk_rounded = round(weighted_avg_risk, 2)
+        avg_risk_level = SchoolRiskItem.calculate_risk_level(avg_risk_rounded)
+        
+        return SchoolRiskResponse(
+            schools=school_items,
+            total_students=total_students,
+            average_risk=avg_risk_rounded,
+            average_risk_level=avg_risk_level,
+            risk_distribution=risk_distribution
+        )
+        
+    except Exception as e:
+        logger.error(f'Error getting school risk data: {str(e)}', exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
