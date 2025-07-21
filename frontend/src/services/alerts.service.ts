@@ -341,6 +341,22 @@ export interface GradeRiskItem {
   student_count: number;
 }
 
+export interface SchoolRiskItem {
+  school_id: string;
+  school_name: string;
+  risk_percentage: number;
+  student_count: number;
+  district_id?: string;
+  district_name?: string;
+}
+
+export interface SchoolRiskResponse {
+  schools: SchoolRiskItem[];
+  total_schools: number;
+  total_students: number;
+  average_risk: number;
+}
+
 export interface GradeRiskResponse {
   grades: GradeRiskItem[];
   total_students: number;
@@ -351,14 +367,16 @@ export interface ApiErrorResponse {
   detail?: string;
 }
 
-export interface ApiError {
+export interface ApiError extends Error {
+  code?: string;
   response?: {
     data?: ApiErrorResponse;
     status?: number;
     headers?: Record<string, any>;
   };
   request?: any;
-  message?: string;
+  message: string;
+  isAxiosError?: boolean;
 }
 
 
@@ -366,12 +384,30 @@ class AlertsService {
   async getFilterOptions(): Promise<FilterOptionsResponse> {
     try {
       const response = await axiosInstance.get<FilterOptionsResponse>(
-        "filter-options"
+        "filter-options",
+        { timeout: 60000 } // Increase timeout to 60 seconds for filter options
       );
       return response.data;
     } catch (error) {
       console.error("Error fetching filter options:", error);
-      throw this.handleError(error as ApiError);
+      const axiosError = error as ApiError;
+      
+      // Handle timeout specifically
+      if (axiosError.code === 'ECONNABORTED') {
+        throw new Error('Request timed out while fetching filter options. The server is taking too long to respond.');
+      }
+      
+      // Handle network errors
+      if (!axiosError.response) {
+        throw new Error('Unable to connect to the server. Please check your internet connection and try again.');
+      }
+      
+      // Handle server errors
+      if (axiosError.response?.status === 503) {
+        throw new Error('The server is currently unavailable. Please try again later.');
+      }
+      
+      throw this.handleError(axiosError);
     }
   }
 
@@ -492,44 +528,53 @@ class AlertsService {
     return this.downloadReport("tier4", criteria);
   }
 
-  async getGradeRisks(district?: string, school?: string): Promise<GradeRiskResponse> {
+  async getSchoolRisks(districtId?: string): Promise<SchoolRiskResponse> {
     try {
-      const params = new URLSearchParams();
-      if (district) params.append('district', district);
-      if (school) params.append('school', school);
+      const url = districtId 
+        ? `risks/schools?district=${encodeURIComponent(districtId)}`
+        : 'risks/schools';
       
-      const response = await axiosInstance.get<GradeRiskResponse>(
-        `/api/alerts/grade-risks?${params.toString()}` // Changed URL
-      );
-      
+      const response = await axiosInstance.get<SchoolRiskResponse>(url);
       return response.data;
     } catch (error) {
-      const apiError = error as ApiError;
-      console.error('Error fetching grade risks:', apiError);
-      throw this.handleError(apiError);
+      console.error('Error fetching school risks:', error);
+      throw this.handleError(error as ApiError);
+    }
+  }
+
+  async getGradeRisks(districtId?: string, schoolId?: string): Promise<GradeRiskResponse> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (districtId) params.append('district', districtId);
+      if (schoolId) params.append('school', schoolId);
+      
+      const response = await axiosInstance.get<GradeRiskResponse>('/grade-risks', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching grade risks:', error);
+      throw this.handleError(error as ApiError);
     }
   }
 
   private handleError(error: ApiError): Error {
-    let message = "An unexpected error occurred";
+    console.error('API Error:', error);
+    let errorMessage = 'An unexpected error occurred';
 
-    if (error.response) {
-      if (error.response.data?.detail) {
-        message = error.response.data.detail;
-      } else if (error.response.status === 404) {
-        message = "No data found for the selected filters.";
-      } else if (error.response.status === 503) {
-        message = "Server is still initializing. Please try again in a moment.";
-      } else {
-        message = `Server error: ${error.response.status}`;
-      }
+    if (error.response?.data?.detail) {
+      errorMessage = error.response.data.detail;
     } else if (error.request) {
-      message = "No response from server. Please check your connection.";
+      errorMessage = "No response from server. Please check your connection.";
     } else if (error.message) {
-      message = `Request error: ${error.message}`;
+      errorMessage = error.message;
     }
 
-    return new Error(message);
+    // Add more context to the error message
+    if (error.response?.status) {
+      errorMessage += ` (Status: ${error.response.status})`;
+    }
+
+    return new Error(errorMessage);
   }
 
  

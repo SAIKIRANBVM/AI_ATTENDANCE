@@ -1,31 +1,8 @@
-from enum import Enum
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
-
-from enum import Enum
-
-class RiskLevel(str, Enum):
-    LOW = "Low"
-    MEDIUM = "Medium"
-    HIGH = "High"
-    CRITICAL = "Critical"
-
-class GradeRiskItem(BaseModel):
-    grade: str
-    risk_percentage: float = Field(..., ge=0, le=100)
-    student_count: int
-    risk_level: RiskLevel = Field(..., description="Risk level based on risk percentage")
+from typing import List, Dict
+from backend.classes.RiskLevel import RiskLevel
+from backend.classes.GradeRiskItem import GradeRiskItem
     
-    @classmethod
-    def calculate_risk_level(cls, risk_percentage: float) -> RiskLevel:
-        """Determine risk level based on risk percentage."""
-        if risk_percentage >= 75:
-            return RiskLevel.CRITICAL
-        elif risk_percentage >= 50:
-            return RiskLevel.HIGH
-        elif risk_percentage >= 30:
-            return RiskLevel.MEDIUM
-        return RiskLevel.LOW
     
 class GradeRiskResponse(BaseModel):
     grades: List[GradeRiskItem] = []
