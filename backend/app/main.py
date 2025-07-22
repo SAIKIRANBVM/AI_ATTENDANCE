@@ -66,7 +66,7 @@ def filter_options():
     return alerts.get_filter_options()
 
 
-@app.get("/api/alerts/grade-risks", response_model=GradeRiskResponse)
+@app.get("/api/alerts/grade-risks/district/{district}/school/{school}", response_model=GradeRiskResponse)
 def get_grade_risks(district: str | None = None, school: str | None = None):
     """
     Get grade-level risk data for the specified district and/or school.
@@ -82,7 +82,7 @@ def get_grade_risks(district: str | None = None, school: str | None = None):
     return alerts.get_grade_risk_data(district, school)
 
 
-@app.get("/api/alerts/school-risks", response_model=SchoolRiskResponse)
+@app.get("/api/alerts/school-risks/district/{district}", response_model=SchoolRiskResponse)
 def get_school_risks(district: str | None = None):
     """
     Get school-level risk data for the specified district.
