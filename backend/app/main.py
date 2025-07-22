@@ -54,19 +54,19 @@ def ready():
 
 
 
-@app.post("/api/alerts/prediction-insights", response_model=AnalysisResponse)
+@app.post("/api//prediction-insights", response_model=AnalysisResponse)
 def prediction_insights(criteria: FilterCriteria):
     ready()
     return alerts.get_analysis(criteria)
 
 
-@app.get("/api/alerts/filter-options", response_model=FilterOptions)
+@app.get("/api/Intelligence/filter-options", response_model=FilterOptions)
 def filter_options():
     ready()
     return alerts.get_filter_options()
 
 
-@app.get("/api/alerts/grade-risks/district/{district}/school/{school}", response_model=GradeRiskResponse)
+@app.get("/api/Intelligence/grade-risks/district/{district}/school/{school}", response_model=GradeRiskResponse)
 def get_grade_risks(district: str | None = None, school: str | None = None):
     """
     Get grade-level risk data for the specified district and/or school.
@@ -82,7 +82,7 @@ def get_grade_risks(district: str | None = None, school: str | None = None):
     return alerts.get_grade_risk_data(district, school)
 
 
-@app.get("/api/alerts/school-risks/district/{district}", response_model=SchoolRiskResponse)
+@app.get("/api/Intelligence/school-risks/district/{district}", response_model=SchoolRiskResponse)
 def get_school_risks(district: str | None = None):
     """
     Get school-level risk data for the specified district.
@@ -98,20 +98,20 @@ def get_school_risks(district: str | None = None):
 
 
 
-@app.get("/api/alerts/schools/district/{districtCode}")
+@app.get("/api/Intelligence/schools/district/{districtCode}")
 def schools(districtCode: str | None = None):
     ready()
     return alerts.get_schools(districtCode)
 
 
-@app.get("/api/alerts/grades/district/{districtCode}/school/{schoolCode}")
+@app.get("/api/Intelligence/grades/district/{districtCode}/school/{schoolCode}")
 def grades(districtCode: str | None = None, schoolCode: str | None = None):
     ready()
     print(f"Fetching grades for district: {districtCode}, school: {schoolCode}")
     return alerts.get_grades(districtCode, schoolCode)
 
 
-@app.post("/api/alerts/download/report/{reportType}")
+@app.post("/api/Intelligence/download/report/{reportType}")
 def download_report(reportType: str, criteria: FilterCriteria):
     ready()
     return alerts.download_report(criteria, reportType)
